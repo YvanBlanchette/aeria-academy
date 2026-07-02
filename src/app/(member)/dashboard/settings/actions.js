@@ -31,6 +31,8 @@ const privacySchema = z.object({
 		.refine((value) => value === "" || /^[a-z0-9-]+$/.test(value), "Utilise uniquement lettres minuscules, chiffres et tirets")
 		.refine((value) => value === "" || (!value.startsWith("-") && !value.endsWith("-")), "Le pseudo ne peut pas commencer/finir par un tiret"),
 	publicProfile: z.boolean(),
+	profileVisibilityScope: z.enum(["PUBLIC", "MEMBERS", "FRIENDS", "PRIVATE"]),
+	messagePermissionScope: z.enum(["EVERYONE", "FRIENDS", "NOBODY"]),
 });
 
 const preferencesSchema = z.object({
@@ -53,6 +55,10 @@ const passwordSchema = z
 		path: ["confirmPassword"],
 	});
 
+const unblockSchema = z.object({
+	blockedUserId: z.string().cuid("Utilisateur invalide"),
+});
+
 async function requireUser() {
 	const session = await auth();
 	if (!session?.user?.id) {
@@ -70,6 +76,8 @@ export async function updatePrivacySettings(payload) {
 
 	const username = parsed.data.username;
 	const publicProfile = parsed.data.publicProfile;
+	const profileVisibilityScope = parsed.data.profileVisibilityScope;
+	const messagePermissionScope = parsed.data.messagePermissionScope;
 
 	if (username && RESERVED_USERNAMES.has(username)) {
 		return { error: "Ce pseudo est réservé" };
@@ -93,10 +101,14 @@ export async function updatePrivacySettings(payload) {
 		where: { userId: user.id },
 		update: {
 			publicProfile: username ? publicProfile : false,
+			profileVisibilityScope,
+			messagePermissionScope,
 		},
 		create: {
 			userId: user.id,
 			publicProfile: username ? publicProfile : false,
+			profileVisibilityScope,
+			messagePermissionScope,
 		},
 	});
 
@@ -106,6 +118,8 @@ export async function updatePrivacySettings(payload) {
 		success: true,
 		username: username || null,
 		publicProfile: username ? publicProfile : false,
+		profileVisibilityScope,
+		messagePermissionScope,
 	};
 }
 
@@ -163,5 +177,26 @@ export async function updatePassword(payload) {
 	});
 
 	revalidatePath("/dashboard/settings");
+	return { success: true };
+}
+
+export async function unblockUserFromSettings(payload) {
+	const user = await requireUser();
+	const parsed = unblockSchema.safeParse(payload);
+	if (!parsed.success) {
+		return { error: parsed.error.issues[0]?.message || "Utilisateur invalide" };
+	}
+
+	await prisma.userBlock.deleteMany({
+		where: {
+			blockerId: user.id,
+			blockedId: parsed.data.blockedUserId,
+		},
+	});
+
+	revalidatePath("/dashboard/settings");
+	revalidatePath("/community");
+	revalidatePath("/community/messages");
+	revalidatePath("/community/friends");
 	return { success: true };
 }

@@ -172,7 +172,7 @@ export default function PricingPlans({
 						alt="Stripe"
 						width={120}
 						height={30}
-						className="mb-2 object-contain"
+						className="mb-2 h-7.5 w-30 object-contain"
 					/>
 					<p className="text-center text-xs text-muted-foreground">{pricing.planCard.securePayment}</p>
 					<p className="text-center text-xs text-muted-foreground">{pricing.planCard.cancelAnytime}</p>

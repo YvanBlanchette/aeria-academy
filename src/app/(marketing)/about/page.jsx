@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import About from "@/components/partials/home/About";
+import About from "@/features/marketing/components/home/about";
 
 import { dict } from "@/lib/i18n";
 

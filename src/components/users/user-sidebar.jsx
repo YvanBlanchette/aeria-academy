@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Logo from "@/components/logo";
 import { UserButtonClient } from "@/components/ui/user-button-client";
-import { CommunityNotificationsMenu } from "@/components/ui/community-notifications-menu";
+import { CommunityNotificationsMenu } from "@/components/community/community-notifications-menu";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import { userSidebarNavItems as navItems } from "@/lib/data/navigation";
 

@@ -1,4 +1,4 @@
-import ContactForm from "@/components/partials/contact/ContactForm";
+import ContactForm from "@/features/marketing/components/contact/contact-form";
 import { dict } from "@/lib/i18n";
 
 import { submitContactForm } from "./actions";

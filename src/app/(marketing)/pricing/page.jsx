@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import { auth } from "@/auth";
-import PricingPlans from "@/components/partials/home/PricingPlans";
+import PricingPlans from "@/features/marketing/components/home/pricing-plans";
 import { getLocaleFromCookie } from "@/lib/locale";
 
 import { createCheckoutSession, createPortalSession } from "./actions";

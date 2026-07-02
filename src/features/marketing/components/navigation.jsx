@@ -10,10 +10,10 @@ import { dict } from "@/lib/i18n";
 import { localizedHref } from "@/lib/links";
 import { LOCALE_COOKIE_NAME, DEFAULT_LOCALE } from "@/lib/locale";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import Logo from "../logo";
-import { Button } from "../ui/button";
-import { UserButtonClient as UserButton } from "../ui/user-button-client";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../ui/sheet";
+import Logo from "@/components/logo";
+import { Button } from "@/components/ui/button";
+import { UserButtonClient as UserButton } from "@/components/ui/user-button-client";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const LOCKED_ROUTES = ["/pricing", "/courses", "/about", "/login", "/register", "/dashboard", "/profile", "/contact"];
 
@@ -25,10 +25,7 @@ export default function Navbar({ locale = "fr", otherLocale }) {
 
 	const locked = LOCKED_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
 
-	const [scrolledPast, setScrolledPast] = useState(() => {
-		if (typeof window === "undefined") return false;
-		return window.scrollY > 40;
-	});
+	const [scrolledPast, setScrolledPast] = useState(false);
 	const [mobileOpen, setMobileOpen] = useState(false);
 
 	// État final dérivé : pas besoin d'effet de synchronisation
@@ -37,6 +34,7 @@ export default function Navbar({ locale = "fr", otherLocale }) {
 	// Scroll listener (skip si locked)
 	useEffect(() => {
 		if (locked) return;
+		setScrolledPast(window.scrollY > 40);
 		let ticking = false;
 		const onScroll = () => {
 			if (ticking) return;

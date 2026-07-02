@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { BadgeCheck, Bell, Globe, Lock, Mail, Save, Shield, UserCircle2 } from "lucide-react";
+import { BadgeCheck, Bell, Globe, Lock, Mail, Save, Shield, UserCircle2, UserX } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { updateDashboardPreferences, updatePassword, updatePrivacySettings } from "./actions";
+import { unblockUserFromSettings, updateDashboardPreferences, updatePassword, updatePrivacySettings } from "./actions";
 
 function membershipLabel(membership) {
 	switch (membership) {
@@ -46,17 +46,20 @@ function initialsOf(user) {
 		.toUpperCase();
 }
 
-export function DashboardSettingsClient({ initialUser, initialPreferences }) {
+export function DashboardSettingsClient({ initialUser, initialPreferences, blockedUsers }) {
 	const router = useRouter();
 	const { update: updateSession } = useSession();
 	const { theme, setTheme } = useTheme();
 	const [isSavingPrivacy, startSavingPrivacy] = useTransition();
 	const [isSavingPreferences, startSavingPreferences] = useTransition();
 	const [isSavingPassword, startSavingPassword] = useTransition();
+	const [isUnblocking, startUnblocking] = useTransition();
 
 	const [privacy, setPrivacy] = useState({
 		username: initialUser.username || "",
 		publicProfile: Boolean(initialUser.publicProfile),
+		profileVisibilityScope: initialUser.profileVisibilityScope || "MEMBERS",
+		messagePermissionScope: initialUser.messagePermissionScope || "EVERYONE",
 	});
 
 	const [preferences, setPreferences] = useState({
@@ -73,6 +76,7 @@ export function DashboardSettingsClient({ initialUser, initialPreferences }) {
 		newPassword: "",
 		confirmPassword: "",
 	});
+	const [blockedUsersState, setBlockedUsersState] = useState(blockedUsers || []);
 
 	const profileUrl = privacy.username ? `/users/${privacy.username}` : null;
 
@@ -100,6 +104,8 @@ export function DashboardSettingsClient({ initialUser, initialPreferences }) {
 				...prev,
 				username: result?.username || "",
 				publicProfile: Boolean(result?.publicProfile),
+				profileVisibilityScope: result?.profileVisibilityScope || prev.profileVisibilityScope,
+				messagePermissionScope: result?.messagePermissionScope || prev.messagePermissionScope,
 			}));
 			await updateSession();
 			router.refresh();
@@ -133,6 +139,20 @@ export function DashboardSettingsClient({ initialUser, initialPreferences }) {
 				confirmPassword: "",
 			});
 			toast.success("Mot de passe mis à jour");
+		});
+	}
+
+	function handleUnblock(blockedUserId) {
+		startUnblocking(async () => {
+			const result = await unblockUserFromSettings({ blockedUserId });
+			if (result?.error) {
+				toast.error(result.error);
+				return;
+			}
+
+			setBlockedUsersState((prev) => prev.filter((user) => user.id !== blockedUserId));
+			router.refresh();
+			toast.success("Utilisateur débloqué");
 		});
 	}
 
@@ -229,6 +249,41 @@ export function DashboardSettingsClient({ initialUser, initialPreferences }) {
 									onCheckedChange={(value) => patchPrivacy({ publicProfile: value })}
 									disabled={!privacy.username}
 								/>
+							</div>
+
+							<div className="space-y-2">
+								<Label>Qui peut voir mon profil</Label>
+								<Select
+									value={privacy.profileVisibilityScope}
+									onValueChange={(value) => patchPrivacy({ profileVisibilityScope: value })}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent position="popper">
+										<SelectItem value="PUBLIC">Tout le monde</SelectItem>
+										<SelectItem value="MEMBERS">Membres connectés</SelectItem>
+										<SelectItem value="FRIENDS">Amis seulement</SelectItem>
+										<SelectItem value="PRIVATE">Personne</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="space-y-2">
+								<Label>Qui peut m&apos;envoyer des messages</Label>
+								<Select
+									value={privacy.messagePermissionScope}
+									onValueChange={(value) => patchPrivacy({ messagePermissionScope: value })}
+								>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent position="popper">
+										<SelectItem value="EVERYONE">Tout le monde</SelectItem>
+										<SelectItem value="FRIENDS">Amis seulement</SelectItem>
+										<SelectItem value="NOBODY">Personne</SelectItem>
+									</SelectContent>
+								</Select>
 							</div>
 
 							{profileUrl ? (
@@ -418,6 +473,52 @@ export function DashboardSettingsClient({ initialUser, initialPreferences }) {
 								<Lock className="mr-2 h-4 w-4" />
 								{isSavingPassword ? "Mise à jour..." : "Mettre à jour le mot de passe"}
 							</Button>
+						</CardContent>
+					</Card>
+
+					<Card>
+						<CardHeader>
+							<CardTitle className="flex items-center gap-2">
+								<UserX className="h-5 w-5" />
+								Utilisateurs bloqués
+							</CardTitle>
+							<CardDescription>Gère les membres que tu as bloqués. Les utilisateurs bloqués ne peuvent pas te contacter.</CardDescription>
+						</CardHeader>
+						<CardContent className="space-y-3">
+							{blockedUsersState.length === 0 ? (
+								<p className="rounded-md border border-dashed p-3 text-sm text-muted-foreground">Aucun utilisateur bloqué.</p>
+							) : (
+								blockedUsersState.map((blockedUser) => {
+									const label = blockedUser.name || blockedUser.email;
+									const initials = initialsOf({ name: blockedUser.name, email: blockedUser.email });
+									return (
+										<div
+											key={blockedUser.id}
+											className="flex items-center justify-between gap-3 rounded-md border p-3"
+										>
+											<div className="flex min-w-0 items-center gap-3">
+												<Avatar className="h-10 w-10">
+													<AvatarImage src={blockedUser.image || undefined} />
+													<AvatarFallback>{initials}</AvatarFallback>
+												</Avatar>
+												<div className="min-w-0">
+													<p className="truncate text-sm font-medium">{label}</p>
+													<p className="truncate text-xs text-muted-foreground">{blockedUser.username ? `@${blockedUser.username}` : blockedUser.email}</p>
+												</div>
+											</div>
+											<Button
+												type="button"
+												variant="outline"
+												size="sm"
+												onClick={() => handleUnblock(blockedUser.id)}
+												disabled={isUnblocking}
+											>
+												Débloquer
+											</Button>
+										</div>
+									);
+								})
+							)}
 						</CardContent>
 					</Card>
 				</div>

@@ -4,18 +4,21 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import clsx from "clsx";
 import Logo from "@/components/logo";
+import MessengerButton from "@/components/community/community-messenger-button";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { Button } from "@/components/ui/button";
-import { CommunityNotificationsMenu } from "@/components/ui/community-notifications-menu";
+import { CommunityNotificationsMenu } from "@/components/community/community-notifications-menu";
 import { UserButtonClient as UserButton } from "@/components/ui/user-button-client";
 import { FaHouseChimney, FaUsers } from "react-icons/fa6";
 import { FaUserCircle } from "react-icons/fa";
-import { Search } from "lucide-react";
-import { useState } from "react";
+import { MessageSquare, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { IoLogIn } from "react-icons/io5";
 
 const TAB_ICONS = {
 	home: FaHouseChimney,
+	messages: MessageSquare,
 	profile: FaUserCircle,
 	users: FaUsers,
 };
@@ -32,12 +35,51 @@ export function SocialShell({ tabs, children }) {
 	const activeQuery = searchParams.get("q") || "";
 	const searchValue = pathname.startsWith("/community") ? activeQuery : "";
 	const [searchBarOpen, setSearchBarOpen] = useState(false);
+	const [incomingPendingCount, setIncomingPendingCount] = useState(0);
+
+	useEffect(() => {
+		if (!isSignedIn) {
+			return;
+		}
+
+		let isMounted = true;
+
+		async function loadFriendSummary() {
+			try {
+				const response = await fetch("/api/community/friends/summary", {
+					cache: "no-store",
+				});
+				if (!response.ok) return;
+				const payload = await response.json();
+				if (!isMounted) return;
+				setIncomingPendingCount(typeof payload.incomingPendingCount === "number" ? payload.incomingPendingCount : 0);
+			} catch {
+				if (!isMounted) return;
+				setIncomingPendingCount(0);
+			}
+		}
+
+		loadFriendSummary();
+		const intervalId = window.setInterval(loadFriendSummary, 15000);
+
+		function handleRefresh() {
+			loadFriendSummary();
+		}
+
+		window.addEventListener("community-notifications:refresh", handleRefresh);
+
+		return () => {
+			isMounted = false;
+			window.clearInterval(intervalId);
+			window.removeEventListener("community-notifications:refresh", handleRefresh);
+		};
+	}, [isSignedIn]);
 
 	return (
 		<div className="min-h-screen bg-[#f0f2f5] text-foreground">
 			<header className="sticky top-0 z-50 border-b border-border/70 bg-white/95 backdrop-blur shadow-lg">
-				<div className="mx-auto grid grid-cols-3 h-16 w-full max-w-7xl items-center justify gap-3 px-4 sm:px-6 lg:px-8">
-					<div className="flex shrink-0 items-center gap-3">
+				<div className="mx-auto grid grid-cols-5 h-16 w-full max-w-7xl items-center justify gap-3 px-4 sm:px-6 lg:px-8">
+					<div className="col-span=1 flex items-center gap-3">
 						<Logo
 							variant="dark"
 							size="sm"
@@ -80,45 +122,59 @@ export function SocialShell({ tabs, children }) {
 						</form>
 					</div>
 
-					<nav className="flex flex-1 items-center justify-center overflow-x-auto">
+					<nav className="col-span-3 flex flex-1 items-center justify-center overflow-x-auto">
 						<div className="flex min-w-max items-center gap-4 rounded-full bg-muted/40 p-1">
 							{tabs.map((tab) => {
 								const active = activeTabHref === tab.href;
 								const TabIcon = tab.iconKey ? TAB_ICONS[tab.iconKey] : null;
+								const isRelationsTab = tab.href === "/community/friends";
 								return (
-									<Link
+									<Tooltip
 										key={tab.href}
-										href={tab.href}
-										className={clsx(
-											"rounded-full px-4 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-1",
-											active ? "bg-[#CE8500] text-white shadow-sm" : "text-muted-foreground hover:bg-[#CE8500]/10 hover:text-[#CE8500]",
-										)}
+										className="h-full"
 									>
-										{TabIcon && <TabIcon className="mr-1 inline h-4 w-4" />}
-										<span>{tab.label}</span>
-									</Link>
+										<TooltipTrigger asChild>
+											<Link
+												href={tab.href}
+												className={clsx(
+													"group rounded-none text-neutral-700 hover:text-[#CE8500] px-10 py-5 h-full border-b-4 text-sm font-medium transition-colors flex items-center justify-center gap-1",
+													active ? "border-[#CE8500] text-[#CE8500]" : "border-transparent hover:border-[#CE8500]",
+												)}
+											>
+												<TabIcon className={clsx("mr-1 inline h-6 w-6 group-hover:text-[#CE8500]", active ? "text-[#CE8500]" : "text-neutral-700")} />
+
+												{isRelationsTab && incomingPendingCount > 0 ? (
+													<span
+														className={clsx(
+															"rounded-full px-1.5 py-0.5 text-[10px] font-semibold",
+															active ? "bg-white/20 text-white" : "bg-primary text-primary-foreground",
+														)}
+													>
+														{incomingPendingCount > 99 ? "99+" : incomingPendingCount}
+													</span>
+												) : null}
+											</Link>
+										</TooltipTrigger>
+										<TooltipContent side={"bottom"}>
+											<span>{tab.label}</span>
+										</TooltipContent>
+									</Tooltip>
 								);
 							})}
 						</div>
 					</nav>
 
-					<div className="flex shrink-0 items-center justify-end gap-2">
-						{!isLoaded ? (
-							<div className="h-9 w-9 rounded-full bg-muted animate-pulse" />
-						) : isSignedIn ? (
-							<div className="flex shrink-0 items-center gap-4">
+					<div className="flex shrink-0 justify-end items-center gap-3">
+						{isLoaded && isSignedIn && (
+							<>
+								<MessengerButton />
 								<CommunityNotificationsMenu />
-								<UserButton />
-							</div>
-						) : (
-							<Button
-								asChild
-								variant="outline"
-								className="rounded-full"
-							>
-								<Link href="/login">Connexion</Link>
-							</Button>
+							</>
 						)}
+
+						<div className="col-span-1 flex shrink-0 items-center justify-end gap-2">
+							{!isLoaded ? <div className="h-9 w-9 rounded-full bg-muted animate-pulse" /> : <UserButton size="lg" />}
+						</div>
 					</div>
 				</div>
 			</header>

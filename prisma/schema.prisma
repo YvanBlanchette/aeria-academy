@@ -36,6 +36,29 @@ enum CommunityNotificationType {
   POST_LIKE
   POST_COMMENT
   FOLLOW
+  MESSAGE
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  CANCELED
+}
+
+enum ProfileVisibilityScope {
+  PUBLIC
+  MEMBERS
+  FRIENDS
+  PRIVATE
+}
+
+enum MessagePermissionScope {
+  EVERYONE
+  FRIENDS
+  NOBODY
 }
 
 model User {
@@ -67,10 +90,22 @@ model User {
   communityPosts CommunityPost[]
   communityComments CommunityComment[]
   communityPostLikes CommunityPostLike[]
+  communityConversationsAsParticipantA CommunityConversation[] @relation("CommunityConversationParticipantA")
+  communityConversationsAsParticipantB CommunityConversation[] @relation("CommunityConversationParticipantB")
+  communityMessagesSent CommunityMessage[]
+  communityMessageReactions CommunityMessageReaction[]
+  communityStories CommunityStory[]
+  communityStoryViews CommunityStoryView[]
   communityNotificationsReceived CommunityNotification[] @relation("CommunityNotificationRecipient")
   communityNotificationsSent CommunityNotification[] @relation("CommunityNotificationActor")
   followers UserFollow[] @relation("UserFollowers")
   following UserFollow[] @relation("UserFollowing")
+  friendRequestsSent UserFriendRequest[] @relation("FriendRequestSender")
+  friendRequestsReceived UserFriendRequest[] @relation("FriendRequestReceiver")
+  friendshipsAsUserA UserFriendship[] @relation("FriendshipUserA")
+  friendshipsAsUserB UserFriendship[] @relation("FriendshipUserB")
+  blocksInitiated UserBlock[] @relation("UserBlocker")
+  blocksReceived UserBlock[] @relation("UserBlocked")
   settingsAuditLogs AdminSettingsAuditLog[]
   dashboardSettings UserDashboardSettings?
 }
@@ -114,6 +149,8 @@ model UserProfile {
 
   // Préférences d'affichage
   publicProfile Boolean @default(false)  // si true, /profile/[username] est public
+  profileVisibilityScope ProfileVisibilityScope @default(MEMBERS)
+  messagePermissionScope MessagePermissionScope @default(EVERYONE)
   publicVisibility Json?
 
   agencyId    String?
@@ -163,6 +200,51 @@ model Agency {
   updatedAt   DateTime @updatedAt
   
   @@index([approved])
+}
+
+model UserFriendRequest {
+  id          String              @id @default(cuid())
+  senderId    String
+  receiverId  String
+  status      FriendRequestStatus @default(PENDING)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  respondedAt DateTime?
+
+  sender      User                @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver    User                @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([senderId, status])
+  @@index([receiverId, status])
+}
+
+model UserFriendship {
+  id        String   @id @default(cuid())
+  userAId   String
+  userBId   String
+  createdAt DateTime @default(now())
+
+  userA     User     @relation("FriendshipUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB     User     @relation("FriendshipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+
+  @@unique([userAId, userBId])
+  @@index([userAId])
+  @@index([userBId])
+}
+
+model UserBlock {
+  id         String   @id @default(cuid())
+  blockerId  String
+  blockedId  String
+  createdAt  DateTime @default(now())
+
+  blocker    User     @relation("UserBlocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked    User     @relation("UserBlocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
 }
 
 model Course {
@@ -354,6 +436,91 @@ model CommunityPostLike {
   @@index([userId])
 }
 
+model CommunityConversation {
+  id                    String            @id @default(cuid())
+  participantAId        String
+  participantBId        String
+  participantALastReadAt DateTime?
+  participantBLastReadAt DateTime?
+  lastMessageAt         DateTime          @default(now())
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  participantA          User              @relation("CommunityConversationParticipantA", fields: [participantAId], references: [id], onDelete: Cascade)
+  participantB          User              @relation("CommunityConversationParticipantB", fields: [participantBId], references: [id], onDelete: Cascade)
+  messages              CommunityMessage[]
+  notifications         CommunityNotification[]
+
+  @@unique([participantAId, participantBId])
+  @@index([participantAId, lastMessageAt])
+  @@index([participantBId, lastMessageAt])
+}
+
+model CommunityMessage {
+  id              String               @id @default(cuid())
+  conversationId  String
+  senderId        String
+  content         String?              @db.Text
+  attachmentUrl   String?
+  attachmentName  String?
+  attachmentMimeType String?
+  attachmentSize  Int?
+  createdAt       DateTime             @default(now())
+  deletedAt       DateTime?
+
+  conversation    CommunityConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender          User                  @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  reactions       CommunityMessageReaction[]
+
+  @@index([conversationId, createdAt])
+  @@index([senderId])
+}
+
+model CommunityMessageReaction {
+  id         String            @id @default(cuid())
+  messageId  String
+  userId     String
+  emoji      String
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  message    CommunityMessage  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@index([userId])
+}
+
+model CommunityStory {
+  id         String               @id @default(cuid())
+  authorId   String
+  content    String?              @db.Text
+  imageUrl   String?
+  createdAt  DateTime             @default(now())
+  expiresAt  DateTime
+
+  author     User                 @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  views      CommunityStoryView[]
+
+  @@index([authorId])
+  @@index([expiresAt, createdAt])
+}
+
+model CommunityStoryView {
+  id         String          @id @default(cuid())
+  storyId    String
+  userId     String
+  viewedAt   DateTime        @default(now())
+
+  story      CommunityStory   @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+  @@index([userId])
+  @@index([storyId])
+}
+
 model CommunityNotification {
   id          String                    @id @default(cuid())
   recipientId String
@@ -361,6 +528,8 @@ model CommunityNotification {
   type        CommunityNotificationType
   postId      String?
   commentId   String?
+  conversationId String?
+  messagePreview String?               @db.Text
   isRead      Boolean                   @default(false)
   readAt      DateTime?
   createdAt   DateTime                  @default(now())
@@ -369,11 +538,13 @@ model CommunityNotification {
   actor       User                      @relation("CommunityNotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
   post        CommunityPost?            @relation(fields: [postId], references: [id], onDelete: SetNull)
   comment     CommunityComment?         @relation(fields: [commentId], references: [id], onDelete: SetNull)
+  conversation CommunityConversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
 
   @@index([recipientId, isRead, createdAt])
   @@index([recipientId, createdAt])
   @@index([postId])
   @@index([commentId])
+  @@index([conversationId])
 }
 
 // Tables NextAuth

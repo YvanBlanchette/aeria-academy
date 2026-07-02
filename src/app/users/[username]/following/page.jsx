@@ -19,7 +19,7 @@ function initialsFromName(name, email) {
 export async function generateMetadata({ params }) {
 	const { username } = await params;
 	return {
-		title: `Abonnements de @${username} | ÆRIA`,
+		title: `Relations de @${username} | ÆRIA`,
 	};
 }
 
@@ -42,13 +42,26 @@ export default async function PublicFollowingPage({ params }) {
 		notFound();
 	}
 
-	const following = await prisma.userFollow.findMany({
-		where: { followerId: targetUser.id },
+	const following = await prisma.userFriendship.findMany({
+		where: {
+			OR: [{ userAId: targetUser.id }, { userBId: targetUser.id }],
+		},
 		orderBy: { createdAt: "desc" },
 		take: 100,
 		include: {
-			following: {
+			userA: {
 				select: {
+					id: true,
+					name: true,
+					email: true,
+					username: true,
+					image: true,
+					profile: { select: { publicProfile: true, jobTitle: true, company: true } },
+				},
+			},
+			userB: {
+				select: {
+					id: true,
 					name: true,
 					email: true,
 					username: true,
@@ -66,9 +79,9 @@ export default async function PublicFollowingPage({ params }) {
 					<CardHeader className="border-b bg-white px-6 py-5">
 						<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
-								<CardTitle className="text-2xl">Abonnements</CardTitle>
+								<CardTitle className="text-2xl">Relations</CardTitle>
 								<p className="mt-1 text-sm text-muted-foreground">
-									{following.length} compte(s) suivis par {targetUser.name || `@${targetUser.username}`}
+									{following.length} ami(s) pour {targetUser.name || `@${targetUser.username}`}
 								</p>
 							</div>
 							<div className="flex items-center gap-3 rounded-full bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
@@ -83,20 +96,20 @@ export default async function PublicFollowingPage({ params }) {
 								variant="outline"
 								className="rounded-full px-3 py-1"
 							>
-								<Link href={`/users/${targetUser.username || username}/followers`}>Abonnés</Link>
+								<Link href={`/users/${targetUser.username || username}/followers`}>Amis</Link>
 							</Badge>
-							<Badge className="rounded-full px-3 py-1">Abonnements</Badge>
+							<Badge className="rounded-full px-3 py-1">Relations</Badge>
 						</div>
 
 						{following.length === 0 ? (
 							<div className="rounded-2xl border border-dashed bg-muted/20 p-12 text-center text-muted-foreground">
 								<UserPlus className="mx-auto mb-3 h-8 w-8 opacity-50" />
-								<p>Aucun abonnement pour le moment.</p>
+								<p>Aucune relation pour le moment.</p>
 							</div>
 						) : (
 							<div className="grid gap-4 md:grid-cols-2">
 								{following.map((item) => {
-									const f = item.following;
+									const f = item.userA.id === targetUser.id ? item.userB : item.userA;
 									const initials = initialsFromName(f.name, f.email);
 									return (
 										<div

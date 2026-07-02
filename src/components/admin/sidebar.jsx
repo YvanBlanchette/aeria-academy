@@ -11,7 +11,8 @@ import Logo from "@/components/logo";
 import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarInset, SidebarTrigger, SidebarFooter } from "@/components/ui/sidebar";
 import { adminSidebarNavItems as navItems } from "@/lib/data/navigation";
 import { UserButtonClient } from "../ui/user-button-client";
-import { CommunityNotificationsMenu } from "../ui/community-notifications-menu";
+import { CommunityNotificationsMenu } from "../community/community-notifications-menu";
+import MessengerButton from "../community/community-messenger-button";
 
 export function AdminSidebar({ user, children }) {
 	const pathname = usePathname();
@@ -89,6 +90,7 @@ export function AdminSidebar({ user, children }) {
 						</div>
 						{user && (
 							<div className="flex items-center gap-4 mr-6">
+								<MessengerButton />
 								<CommunityNotificationsMenu />
 								<UserButtonClient
 									user={user}

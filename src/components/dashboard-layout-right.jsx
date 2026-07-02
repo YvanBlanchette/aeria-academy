@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Button } from "./ui/button";
 import { UserButtonClient } from "./ui/user-button-client";
-import { CommunityNotificationsMenu } from "./ui/community-notifications-menu";
+import { CommunityNotificationsMenu } from "./community/community-notifications-menu";
 import { auth } from "@/auth";
 
 const DashboardLayoutRight = async ({ children, title, subtitle, btnLabel, btnLink }) => {

@@ -242,7 +242,7 @@ export default async function ArticleDetailPage({ params }) {
 
 	return (
 		<ContentProtection>
-			<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+			<div className="space-y-6">
 				<ResourceReadingShell
 					categoryTree={categoryTree}
 					activeCategoryPath={activeCategoryPath}
@@ -251,10 +251,11 @@ export default async function ArticleDetailPage({ params }) {
 					title={article.title}
 					breadcrumbSegments={breadcrumbSegments}
 					user={shellUser}
+					sidebarDefaultOpen={false}
 				>
-					<article className="min-w-0">
+					<article className="min-w-0 p-6 lg:p-8">
 						{article.coverImage && (
-							<div className="aspect-video w-full overflow-hidden rounded-lg bg-muted mb-8">
+							<div className="mb-8 aspect-video w-full overflow-hidden rounded-lg bg-muted">
 								{/* eslint-disable-next-line @next/next/no-img-element */}
 								<img
 									src={article.coverImage}
@@ -264,7 +265,7 @@ export default async function ArticleDetailPage({ params }) {
 							</div>
 						)}
 
-						<div className="flex flex-wrap items-center gap-3 mb-6 pb-6 border-b">
+						<div className="mb-6 flex flex-wrap items-center gap-3 border-b pb-6">
 							{article.author.profile?.publicProfile && article.author.username ? (
 								<Link
 									href={`/users/${article.author.username}`}
@@ -309,7 +310,7 @@ export default async function ArticleDetailPage({ params }) {
 							</div>
 						</div>
 
-						<div className="flex flex-wrap gap-2 mb-8">
+						<div className="mb-8 flex flex-wrap gap-2">
 							{article.tags.map(({ tag }) => (
 								<Link
 									key={tag.id}
@@ -317,7 +318,7 @@ export default async function ArticleDetailPage({ params }) {
 								>
 									<Badge
 										variant="outline"
-										className="hover:bg-muted cursor-pointer"
+										className="cursor-pointer hover:bg-muted"
 										style={
 											tag.color
 												? {
@@ -347,7 +348,7 @@ export default async function ArticleDetailPage({ params }) {
 							<ArticleContent content={article.content} />
 						</div>
 
-						<div className="mt-12 pt-6 border-t">
+						<div className="mt-12 border-t pt-6">
 							<Link
 								href="/resources"
 								className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"

@@ -19,7 +19,7 @@ function initialsFromName(name, email) {
 export async function generateMetadata({ params }) {
 	const { username } = await params;
 	return {
-		title: `Followers de @${username} | ÆRIA`,
+		title: `Amis de @${username} | ÆRIA`,
 	};
 }
 
@@ -42,13 +42,26 @@ export default async function PublicFollowersPage({ params }) {
 		notFound();
 	}
 
-	const followers = await prisma.userFollow.findMany({
-		where: { followingId: targetUser.id },
+	const followers = await prisma.userFriendship.findMany({
+		where: {
+			OR: [{ userAId: targetUser.id }, { userBId: targetUser.id }],
+		},
 		orderBy: { createdAt: "desc" },
 		take: 100,
 		include: {
-			follower: {
+			userA: {
 				select: {
+					id: true,
+					name: true,
+					email: true,
+					username: true,
+					image: true,
+					profile: { select: { publicProfile: true, jobTitle: true, company: true } },
+				},
+			},
+			userB: {
+				select: {
+					id: true,
 					name: true,
 					email: true,
 					username: true,
@@ -66,9 +79,9 @@ export default async function PublicFollowersPage({ params }) {
 					<CardHeader className="border-b bg-white px-6 py-5">
 						<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 							<div>
-								<CardTitle className="text-2xl">Abonnés</CardTitle>
+								<CardTitle className="text-2xl">Amis</CardTitle>
 								<p className="mt-1 text-sm text-muted-foreground">
-									{followers.length} personne(s) suivent {targetUser.name || `@${targetUser.username}`}
+									{followers.length} ami(s) connectés à {targetUser.name || `@${targetUser.username}`}
 								</p>
 							</div>
 							<div className="flex items-center gap-3 rounded-full bg-muted/40 px-4 py-2 text-sm text-muted-foreground">
@@ -79,24 +92,24 @@ export default async function PublicFollowersPage({ params }) {
 					</CardHeader>
 					<CardContent className="p-4 sm:p-6">
 						<div className="mb-5 flex flex-wrap items-center gap-2 border-b pb-4">
-							<Badge className="rounded-full px-3 py-1">Abonnés</Badge>
+							<Badge className="rounded-full px-3 py-1">Amis</Badge>
 							<Badge
 								variant="outline"
 								className="rounded-full px-3 py-1"
 							>
-								<Link href={`/users/${targetUser.username || username}/following`}>Abonnements</Link>
+								<Link href={`/users/${targetUser.username || username}/following`}>Relations</Link>
 							</Badge>
 						</div>
 
 						{followers.length === 0 ? (
 							<div className="rounded-2xl border border-dashed bg-muted/20 p-12 text-center text-muted-foreground">
 								<Users className="mx-auto mb-3 h-8 w-8 opacity-50" />
-								<p>Aucun follower pour le moment.</p>
+								<p>Aucun ami pour le moment.</p>
 							</div>
 						) : (
 							<div className="grid gap-4 md:grid-cols-2">
 								{followers.map((item) => {
-									const f = item.follower;
+									const f = item.userA.id === targetUser.id ? item.userB : item.userA;
 									const initials = initialsFromName(f.name, f.email);
 									return (
 										<div

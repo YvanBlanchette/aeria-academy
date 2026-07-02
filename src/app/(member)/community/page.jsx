@@ -6,7 +6,8 @@ import { getCommunityEnabled } from "@/lib/platform-settings";
 import { formatSocialRelativeTime } from "@/lib/time";
 import { Button } from "@/components/ui/button";
 import { CommunityPostComposer } from "@/components/community/community-post-composer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CommunityStoriesStrip } from "@/components/community/community-stories-strip";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { MessageCircle, ThumbsUp } from "lucide-react";
@@ -105,7 +106,7 @@ export default async function CommunityPage({ searchParams }) {
 	const userId = session.user.id;
 	const isAdmin = session.user.role === "ADMIN";
 
-	const [posts, totalPosts, currentMember] = await Promise.all([
+	const [posts, totalPosts, currentMember, communityStories] = await Promise.all([
 		prisma.communityPost.findMany({
 			where: postWhere,
 			orderBy: [{ createdAt: "desc" }],
@@ -162,6 +163,28 @@ export default async function CommunityPage({ searchParams }) {
 				},
 			},
 		}),
+		prisma.communityStory.findMany({
+			where: {
+				expiresAt: { gt: new Date() },
+			},
+			orderBy: [{ createdAt: "desc" }],
+			include: {
+				author: {
+					select: {
+						id: true,
+						name: true,
+						email: true,
+						image: true,
+						username: true,
+						profile: { select: { publicProfile: true, jobTitle: true, company: true } },
+					},
+				},
+				views: {
+					where: { userId },
+					select: { id: true },
+				},
+			},
+		}),
 	]);
 
 	const totalPages = Math.max(1, Math.ceil(totalPosts / PAGE_SIZE));
@@ -173,15 +196,6 @@ export default async function CommunityPage({ searchParams }) {
 			<div className="space-y-5">
 				<Card className="overflow-hidden rounded-3xl border-0 bg-white shadow-sm">
 					<CardContent className="space-y-3 px-5 py-4 sm:px-6 sm:py-4">
-						{/* <div>
-							<div>
-								<p className="text-sm font-medium text-foreground">Fil des publications</p>
-								<p className="text-xs text-muted-foreground">
-									{totalPosts} publication(s){query ? ` pour "${query}"` : ""}
-								</p>
-							</div>
-						</div> */}
-
 						<CommunityPostComposer
 							user={currentMember}
 							placeholder="Qu'est-ce que tu veux partager avec la communauté aujourd'hui ?"
@@ -189,6 +203,13 @@ export default async function CommunityPage({ searchParams }) {
 						/>
 					</CardContent>
 				</Card>
+
+				<CardContent className="">
+					<CommunityStoriesStrip
+						stories={communityStories}
+						currentUser={currentMember}
+					/>
+				</CardContent>
 
 				<div className="space-y-4">
 					{posts.length === 0 ? (

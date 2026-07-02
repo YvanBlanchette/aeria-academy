@@ -19,6 +19,7 @@ import { FaFacebookF, FaLinkedinIn, FaInstagram, FaYoutube, FaXTwitter, FaTiktok
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { normalizePublicVisibility } from "@/lib/profile-visibility";
+import { canUserMessageTarget, canViewerSeeUserProfile, normalizeFriendshipPair } from "@/lib/social-graph";
 import { formatSocialRelativeTime } from "@/lib/time";
 import { CommunityPostComposer } from "@/components/community/community-post-composer";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ProfileCoverControls } from "@/components/profile/profile-cover-controls";
-import { followUser, unfollowUser } from "./actions";
+import { acceptFriendRequest, blockUser, cancelFriendRequest, declineFriendRequest, sendFriendRequest, unblockUser, unfriendUser } from "./actions";
 
 const SOCIAL_ICONS = {
 	facebook: FaFacebookF,
@@ -89,7 +90,14 @@ export default async function PublicProfilePage({ params }) {
 		},
 	});
 
-	const canViewProfile = Boolean(user?.profile?.publicProfile || currentUserId);
+	const visibilityScope = user?.profile?.profileVisibilityScope || (user?.profile?.publicProfile ? "PUBLIC" : "MEMBERS");
+	const canViewProfile = user
+		? await canViewerSeeUserProfile({
+				viewerId: currentUserId,
+				targetUserId: user.id,
+				targetProfileVisibilityScope: visibilityScope,
+			})
+		: false;
 
 	if (!user || !canViewProfile) {
 		notFound();
@@ -102,48 +110,112 @@ export default async function PublicProfilePage({ params }) {
 	const memberSince = memberSinceLabel(user.createdAt);
 	const profileUsername = user.username || username;
 
-	const [communityPostsCount, communityCommentsCount, receivedLikesCount, followersCount, followingCount, recentPosts, recentCertificates, followRecord] =
-		await Promise.all([
-			prisma.communityPost.count({ where: { authorId: user.id } }),
-			prisma.communityComment.count({ where: { authorId: user.id } }),
-			prisma.communityPostLike.count({ where: { post: { authorId: user.id } } }),
-			prisma.userFollow.count({ where: { followingId: user.id } }),
-			prisma.userFollow.count({ where: { followerId: user.id } }),
-			prisma.communityPost.findMany({
-				where: { authorId: user.id },
-				orderBy: { createdAt: "desc" },
-				take: 10,
-				select: {
-					id: true,
-					content: true,
-					imageUrl: true,
-					createdAt: true,
-					_count: { select: { likes: true, comments: true } },
-				},
-			}),
-			prisma.certificate.findMany({
-				where: { userId: user.id },
-				orderBy: { issuedAt: "desc" },
-				take: 4,
-				include: {
-					course: { select: { title: true } },
-				},
-			}),
-			currentUserId
-				? prisma.userFollow.findUnique({
-						where: {
-							followerId_followingId: {
-								followerId: currentUserId,
-								followingId: user.id,
-							},
+	const [
+		communityPostsCount,
+		communityCommentsCount,
+		receivedLikesCount,
+		friendsCount,
+		recentPosts,
+		recentCertificates,
+		friendshipRecord,
+		outgoingFriendRequest,
+		incomingFriendRequest,
+		blockByCurrentUser,
+		blockByTargetUser,
+		canMessageTarget,
+	] = await Promise.all([
+		prisma.communityPost.count({ where: { authorId: user.id } }),
+		prisma.communityComment.count({ where: { authorId: user.id } }),
+		prisma.communityPostLike.count({ where: { post: { authorId: user.id } } }),
+		prisma.userFriendship.count({
+			where: {
+				OR: [{ userAId: user.id }, { userBId: user.id }],
+			},
+		}),
+		prisma.communityPost.findMany({
+			where: { authorId: user.id },
+			orderBy: { createdAt: "desc" },
+			take: 10,
+			select: {
+				id: true,
+				content: true,
+				imageUrl: true,
+				createdAt: true,
+				_count: { select: { likes: true, comments: true } },
+			},
+		}),
+		prisma.certificate.findMany({
+			where: { userId: user.id },
+			orderBy: { issuedAt: "desc" },
+			take: 4,
+			include: {
+				course: { select: { title: true } },
+			},
+		}),
+		currentUserId
+			? prisma.userFriendship.findUnique({
+					where: {
+						userAId_userBId: {
+							userAId: normalizeFriendshipPair(currentUserId, user.id)[0],
+							userBId: normalizeFriendshipPair(currentUserId, user.id)[1],
 						},
-						select: { id: true },
-					})
-				: Promise.resolve(null),
-		]);
+					},
+					select: { id: true },
+				})
+			: Promise.resolve(null),
+		currentUserId
+			? prisma.userFriendRequest.findFirst({
+					where: {
+						senderId: currentUserId,
+						receiverId: user.id,
+						status: "PENDING",
+					},
+					select: { id: true },
+				})
+			: Promise.resolve(null),
+		currentUserId
+			? prisma.userFriendRequest.findFirst({
+					where: {
+						senderId: user.id,
+						receiverId: currentUserId,
+						status: "PENDING",
+					},
+					select: { id: true },
+				})
+			: Promise.resolve(null),
+		currentUserId
+			? prisma.userBlock.findFirst({
+					where: {
+						blockerId: currentUserId,
+						blockedId: user.id,
+					},
+					select: { id: true },
+				})
+			: Promise.resolve(null),
+		currentUserId
+			? prisma.userBlock.findFirst({
+					where: {
+						blockerId: user.id,
+						blockedId: currentUserId,
+					},
+					select: { id: true },
+				})
+			: Promise.resolve(null),
+		currentUserId
+			? canUserMessageTarget({
+					senderId: currentUserId,
+					targetUserId: user.id,
+					targetMessagePermissionScope: user.profile?.messagePermissionScope || "EVERYONE",
+				})
+			: Promise.resolve(false),
+	]);
 
 	const isOwnProfile = !!currentUserId && currentUserId === user.id;
-	const isFollowing = !!followRecord;
+	const isFriend = !!friendshipRecord;
+	const hasOutgoingFriendRequest = !!outgoingFriendRequest;
+	const hasIncomingFriendRequest = !!incomingFriendRequest;
+	const isBlockedByMe = !!blockByCurrentUser;
+	const isBlockedByTarget = !!blockByTargetUser;
 	const loginCallbackUrl = `/login?callbackUrl=/users/${profileUsername}`;
 	const showJobTitle = isOwnProfile || publicVisibility.showJobTitle;
 	const showCompany = isOwnProfile || publicVisibility.showCompany;
@@ -159,8 +231,8 @@ export default async function PublicProfilePage({ params }) {
 	const hasPrivateContact = isOwnProfile && (user.email || profile.phone || profile.address || profile.city || profile.country || profile.postalCode);
 	const profileTabs = [
 		{ label: "Profil", href: `/users/${profileUsername}` },
-		{ label: "Followers", href: `/users/${profileUsername}/followers` },
-		{ label: "Abonnements", href: `/users/${profileUsername}/following` },
+		{ label: "Amis", href: `/users/${profileUsername}/followers` },
+		{ label: "Relations", href: `/users/${profileUsername}/following` },
 	];
 
 	const initials = (user.name || user.email)
@@ -239,13 +311,20 @@ export default async function PublicProfilePage({ params }) {
 									</>
 								) : !currentUserId ? (
 									<Button asChild>
-										<Link href={loginCallbackUrl}>Se connecter pour suivre</Link>
+										<Link href={loginCallbackUrl}>Se connecter pour interagir</Link>
 									</Button>
-								) : isFollowing ? (
-									<form action={unfollowUser}>
+								) : isBlockedByTarget ? (
+									<Badge
+										variant="secondary"
+										className="rounded-full"
+									>
+										Tu ne peux pas interagir avec ce profil
+									</Badge>
+								) : isBlockedByMe ? (
+									<form action={unblockUser}>
 										<input
 											type="hidden"
-											name="followingId"
+											name="targetUserId"
 											value={user.id}
 										/>
 										<input
@@ -257,14 +336,95 @@ export default async function PublicProfilePage({ params }) {
 											type="submit"
 											variant="outline"
 										>
-											Ne plus suivre
+											Débloquer
 										</Button>
 									</form>
-								) : (
-									<form action={followUser}>
+								) : isFriend ? (
+									<div className="flex flex-wrap items-center gap-2">
+										{canMessageTarget ? (
+											<Button
+												asChild
+												variant="outline"
+											>
+												<Link href={`/community/messages?composeTo=${encodeURIComponent(profileUsername)}`}>Message</Link>
+											</Button>
+										) : null}
+										<form action={unfriendUser}>
+											<input
+												type="hidden"
+												name="targetUserId"
+												value={user.id}
+											/>
+											<input
+												type="hidden"
+												name="username"
+												value={profileUsername}
+											/>
+											<Button
+												type="submit"
+												variant="outline"
+											>
+												Retirer des amis
+											</Button>
+										</form>
+										<form action={blockUser}>
+											<input
+												type="hidden"
+												name="targetUserId"
+												value={user.id}
+											/>
+											<input
+												type="hidden"
+												name="username"
+												value={profileUsername}
+											/>
+											<Button
+												type="submit"
+												variant="outline"
+											>
+												Bloquer
+											</Button>
+										</form>
+									</div>
+								) : hasIncomingFriendRequest ? (
+									<div className="flex flex-wrap items-center gap-2">
+										<form action={acceptFriendRequest}>
+											<input
+												type="hidden"
+												name="targetUserId"
+												value={user.id}
+											/>
+											<input
+												type="hidden"
+												name="username"
+												value={profileUsername}
+											/>
+											<Button type="submit">Accepter</Button>
+										</form>
+										<form action={declineFriendRequest}>
+											<input
+												type="hidden"
+												name="targetUserId"
+												value={user.id}
+											/>
+											<input
+												type="hidden"
+												name="username"
+												value={profileUsername}
+											/>
+											<Button
+												type="submit"
+												variant="outline"
+											>
+												Refuser
+											</Button>
+										</form>
+									</div>
+								) : hasOutgoingFriendRequest ? (
+									<form action={cancelFriendRequest}>
 										<input
 											type="hidden"
-											name="followingId"
+											name="targetUserId"
 											value={user.id}
 										/>
 										<input
@@ -272,8 +432,37 @@ export default async function PublicProfilePage({ params }) {
 											name="username"
 											value={profileUsername}
 										/>
-										<Button type="submit">Suivre</Button>
+										<Button
+											type="submit"
+											variant="outline"
+										>
+											Demande envoyée (annuler)
+										</Button>
 									</form>
+								) : (
+									<div className="flex flex-wrap items-center gap-2">
+										{canMessageTarget ? (
+											<Button
+												asChild
+												variant="outline"
+											>
+												<Link href={`/community/messages?composeTo=${encodeURIComponent(profileUsername)}`}>Message</Link>
+											</Button>
+										) : null}
+										<form action={sendFriendRequest}>
+											<input
+												type="hidden"
+												name="targetUserId"
+												value={user.id}
+											/>
+											<input
+												type="hidden"
+												name="username"
+												value={profileUsername}
+											/>
+											<Button type="submit">Ajouter en ami</Button>
+										</form>
+									</div>
 								)}
 							</div>
 						</div>
@@ -294,18 +483,9 @@ export default async function PublicProfilePage({ params }) {
 							) : null}
 							{showFollowStats ? (
 								<>
-									<Link
-										href={`/users/${profileUsername}/followers`}
-										className="inline-flex items-center gap-1.5 hover:text-foreground"
-									>
-										<Users className="h-4 w-4" /> <strong className="text-foreground">{followersCount}</strong> followers
-									</Link>
-									<Link
-										href={`/users/${profileUsername}/following`}
-										className="inline-flex items-center gap-1.5 hover:text-foreground"
-									>
-										<UserPlus className="h-4 w-4" /> <strong className="text-foreground">{followingCount}</strong> abonnements
-									</Link>
+									<span className="inline-flex items-center gap-1.5">
+										<Users className="h-4 w-4" /> <strong className="text-foreground">{friendsCount}</strong> amis
+									</span>
 								</>
 							) : null}
 						</div>

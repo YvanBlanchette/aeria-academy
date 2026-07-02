@@ -1,9 +1,9 @@
 import { cookies } from "next/headers";
 
-import Hero from "@/components/partials/home/Hero";
-import FeaturedCourses from "@/components/partials/home/FeaturedCourses";
-import About from "@/components/partials/home/About";
-import PricingPlans from "@/components/partials/home/PricingPlans";
+import Hero from "@/features/marketing/components/home/hero";
+import FeaturedCourses from "@/features/marketing/components/home/featured-courses";
+import About from "@/features/marketing/components/home/about";
+import PricingPlans from "@/features/marketing/components/home/pricing-plans";
 import { auth } from "@/auth";
 import { getLocaleFromCookie } from "@/lib/locale";
 

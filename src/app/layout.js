@@ -25,7 +25,10 @@ export default function RootLayout({ children }) {
 					content="ÆRIA"
 				/>
 			</head>
-			<body className="bg-neutral-100 text-foreground transition-colors">
+			<body
+				suppressHydrationWarning
+				className="bg-neutral-100 text-foreground transition-colors"
+			>
 				<Providers>
 					<TooltipProvider>{children}</TooltipProvider>
 					<Toaster richColors />

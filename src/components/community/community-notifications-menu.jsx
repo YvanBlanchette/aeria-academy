@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, ThumbsUp, UserPlus } from "lucide-react";
+import { MessageCircle, MessageSquareText, ThumbsUp, UserCheck, UserPlus } from "lucide-react";
 import { FaBell } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { formatSocialRelativeTime } from "@/lib/time";
@@ -15,99 +14,44 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Tooltip, TooltipContent, TooltipTrigger } from "./tooltip";
-
-const NOTIFICATIONS_LIMIT = 8;
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { useNotifications } from "@/features/community/notifications/notifications-provider";
 
 function NotificationIcon({ type }) {
 	if (type === "POST_LIKE") return <ThumbsUp className="h-3.5 w-3.5" />;
 	if (type === "POST_COMMENT") return <MessageCircle className="h-3.5 w-3.5" />;
+	if (type === "MESSAGE") return <MessageSquareText className="h-3.5 w-3.5" />;
+	if (type === "FRIEND_REQUEST") return <UserPlus className="h-3.5 w-3.5" />;
+	if (type === "FRIEND_ACCEPTED") return <UserCheck className="h-3.5 w-3.5" />;
 	return <UserPlus className="h-3.5 w-3.5" />;
 }
 
 export function CommunityNotificationsMenu() {
 	const router = useRouter();
-	const [notifications, setNotifications] = useState([]);
-	const [unreadCount, setUnreadCount] = useState(0);
-
-	async function markAsRead(notificationId) {
-		try {
-			const response = await fetch("/api/community/notifications", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ notificationId }),
-			});
-			if (!response.ok) return;
-			const payload = await response.json();
-			if (typeof payload.unreadCount === "number") {
-				setUnreadCount(payload.unreadCount);
-			}
-		} catch {
-			// Keep optimistic UI
-		}
-	}
-
-	async function markAllAsRead() {
-		try {
-			const response = await fetch("/api/community/notifications", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ markAll: true }),
-			});
-			if (!response.ok) return;
-			const payload = await response.json();
-			setNotifications([]);
-			if (typeof payload.unreadCount === "number") {
-				setUnreadCount(payload.unreadCount);
-			}
-		} catch {
-			// Keep current UI if request fails.
-		}
-	}
+	const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
 
 	async function handleNotificationSelect(item) {
 		if (!item?.href) return;
-
-		if (!item.isRead) {
-			setNotifications((prev) => prev.filter((n) => n.id !== item.id));
-			setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
-			await markAsRead(item.id);
-		}
-
+		if (!item.isRead) await markAsRead(item.id);
 		router.push(item.href);
 	}
 
-	useEffect(() => {
-		let isMounted = true;
-
-		async function loadNotifications() {
-			try {
-				const response = await fetch(`/api/community/notifications?limit=${NOTIFICATIONS_LIMIT}`, {
-					cache: "no-store",
-				});
-				if (!response.ok) return;
-				const payload = await response.json();
-				if (!isMounted) return;
-				setNotifications(Array.isArray(payload.notifications) ? payload.notifications : []);
-				setUnreadCount(typeof payload.unreadCount === "number" ? payload.unreadCount : 0);
-			} catch {
-				if (!isMounted) return;
-				setNotifications([]);
-				setUnreadCount(0);
-			}
-		}
-
-		loadNotifications();
-
-		return () => {
-			isMounted = false;
-		};
-	}, []);
-
 	const unreadLabel = unreadCount > 99 ? "99+" : String(unreadCount);
+
 	function renderNotificationItem(item) {
 		const actorName = item.actor?.name || item.actor?.email || "Membre";
-		const actionText = item.type === "POST_LIKE" ? "a aime ton post" : item.type === "POST_COMMENT" ? "a commente ton post" : "a commence a te suivre";
+		const actionText =
+			item.type === "POST_LIKE"
+				? "a aimé ton post"
+				: item.type === "POST_COMMENT"
+					? "a commenté ton post"
+					: item.type === "MESSAGE"
+						? "t'a envoyé un message"
+						: item.type === "FRIEND_REQUEST"
+							? "t'a envoyé une demande d'ami"
+							: item.type === "FRIEND_ACCEPTED"
+								? "a accepté ta demande d'ami"
+								: "a interagi avec toi";
 		const dateLabel = formatSocialRelativeTime(item.createdAt);
 
 		return (
@@ -122,6 +66,7 @@ export function CommunityNotificationsMenu() {
 						{actorName} {actionText}
 					</span>
 					{item.post?.content ? <span className="line-clamp-1 text-[11px] text-muted-foreground">{item.post.content}</span> : null}
+					{item.messagePreview ? <span className="line-clamp-1 text-[11px] text-muted-foreground">{item.messagePreview}</span> : null}
 					{dateLabel ? <span className="text-[10px] text-muted-foreground">{dateLabel}</span> : null}
 				</div>
 			</DropdownMenuItem>
@@ -135,7 +80,7 @@ export function CommunityNotificationsMenu() {
 					<DropdownMenuTrigger asChild>
 						<Button
 							variant="ghost"
-							className="relative hover:bg-muted rounded-full p-4 w-12 h-12"
+							className="relative rounded-full p-4 w-12 h-12 bg-neutral-100 hover:bg-neutral-200"
 						>
 							<FaBell className="h-8 w-8" />
 							<span className="sr-only">Notifications</span>

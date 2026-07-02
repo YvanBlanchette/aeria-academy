@@ -1,6 +1,6 @@
 "use client";
 
-import LearningPathCard from "@/components/LearningPathCard";
+import LearningPathCard from "@/components/learning-path-card";
 import { dict } from "@/lib/i18n";
 
 export default function LearningPaths({ locale }) {

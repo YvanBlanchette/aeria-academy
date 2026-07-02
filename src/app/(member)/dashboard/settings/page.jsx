@@ -28,6 +28,8 @@ export default async function SettingsPage() {
 			profile: {
 				select: {
 					publicProfile: true,
+					profileVisibilityScope: true,
+					messagePermissionScope: true,
 				},
 			},
 			dashboardSettings: {
@@ -47,6 +49,22 @@ export default async function SettingsPage() {
 		redirect("/login?callbackUrl=/dashboard/settings");
 	}
 
+	const blockedUsers = await prisma.userBlock.findMany({
+		where: { blockerId: user.id },
+		orderBy: { createdAt: "desc" },
+		include: {
+			blocked: {
+				select: {
+					id: true,
+					username: true,
+					name: true,
+					email: true,
+					image: true,
+				},
+			},
+		},
+	});
+
 	const initialPreferences = {
 		...DEFAULT_DASHBOARD_PREFERENCES,
 		...(user.dashboardSettings || {}),
@@ -64,12 +82,22 @@ export default async function SettingsPage() {
 		username: user.username,
 		hasPassword: Boolean(user.password),
 		publicProfile: Boolean(user.profile?.publicProfile),
+		profileVisibilityScope: user.profile?.profileVisibilityScope || "MEMBERS",
+		messagePermissionScope: user.profile?.messagePermissionScope || "EVERYONE",
 	};
 
 	return (
 		<DashboardSettingsClient
 			initialUser={userPayload}
 			initialPreferences={initialPreferences}
+			blockedUsers={blockedUsers.map((entry) => ({
+				id: entry.blocked.id,
+				username: entry.blocked.username,
+				name: entry.blocked.name,
+				email: entry.blocked.email,
+				image: entry.blocked.image,
+				blockedAt: entry.createdAt,
+			}))}
 		/>
 	);
 }

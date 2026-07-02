@@ -13,6 +13,7 @@ export const userSidebarNavItems = [
 	{ href: "/dashboard", label: "Tableau de bord", icon: LayoutDashboard },
 	{ href: "/dashboard/courses", label: "Mes cours", icon: BookOpen },
 	{ href: "/community", label: "Communauté", icon: MessagesSquare },
+	{ href: "/community/messages", label: "Messages", icon: MessagesSquare },
 	{ href: "/resources", label: "Ressources", icon: FileText },
 	{ href: "/dashboard/certificates", label: "Certificats", icon: Award },
 	{ href: "/profile", label: "Mon profil", icon: User },
@@ -26,6 +27,6 @@ export function buildSocialTabs(userSlug) {
 	return [
 		{ label: "Accueil", href: "/community", iconKey: "home" },
 		{ label: "Profil", href: profileHref, iconKey: "profile" },
-		...(userSlug ? [{ label: "Abonnés", href: `/users/${userSlug}/followers`, iconKey: "users" }] : []),
+		{ label: "Amis", href: "/community/friends", iconKey: "users" },
 	];
 }

@@ -4,7 +4,7 @@ import { SidebarProvider, Sidebar, SidebarContent, SidebarHeader, SidebarInset, 
 import { LessonSidebar } from "./lesson-sidebar";
 import Logo from "@/components/logo";
 import { UserButtonClient } from "../ui/user-button-client";
-import { CommunityNotificationsMenu } from "../ui/community-notifications-menu";
+import { CommunityNotificationsMenu } from "../community/community-notifications-menu";
 import Footer from "../partials/Footer";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";

@@ -2,34 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AgencyRowActions } from "@/components/admin/agency-row-actions";
-import { ArrowDown, ArrowUp, ArrowUpDown, Building2, ChevronLeft, ChevronRight, Search, ShieldCheck, Users, UserRoundCheck } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-
-const PAGE_SIZE = 12;
-const SORT_FIELDS = ["name", "status", "members", "city", "createdAt"];
-
-function parseFilterParams(params) {
-	const q = typeof params?.q === "string" ? params.q.trim() : "";
-	const status = params?.status === "pending" || params?.status === "approved" ? params.status : "all";
-	const sort = SORT_FIELDS.includes(params?.sort) ? params.sort : "createdAt";
-	const dir = params?.dir === "asc" || params?.dir === "desc" ? params.dir : "desc";
-	const parsedPage = Number(params?.page);
-	const page = Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1;
-	return { q, status, sort, dir, page };
-}
-
-function SortHeaderLink({ href, label, active, dir }) {
-	return (
-		<Link
-			href={href}
-			className="inline-flex items-center justify-center gap-1 hover:opacity-90"
-		>
-			<span>{label}</span>
-			{active ? dir === "asc" ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUpDown className="h-3.5 w-3.5" />}
-		</Link>
-	);
-}
+import { Building2, Search, ShieldCheck, Users, UserRoundCheck } from "lucide-react";
+import { AdminAgenciesInfiniteTable } from "@/features/admin/agencies/components/admin-agencies-infinite-table";
+import { buildAdminAgenciesWhere, getAdminAgenciesPage, parseAdminAgenciesParams } from "@/features/admin/agencies/server/admin-agencies-list";
 
 export const metadata = {
 	title: "Agences — AERIA Admin",
@@ -37,65 +12,19 @@ export const metadata = {
 
 export default async function AdminAgenciesPage({ searchParams }) {
 	const params = await searchParams;
-	const { q, status, sort, dir, page } = parseFilterParams(params);
+	const { q, status, sort, dir } = parseAdminAgenciesParams(params);
+	const where = buildAdminAgenciesWhere({ q, status });
 
-	const where = {
-		...(status === "pending" ? { approved: false } : status === "approved" ? { approved: true } : {}),
-		...(q
-			? {
-					OR: [
-						{ name: { contains: q, mode: "insensitive" } },
-						{ city: { contains: q, mode: "insensitive" } },
-						{ province: { contains: q, mode: "insensitive" } },
-						{ email: { contains: q, mode: "insensitive" } },
-						{ slug: { contains: q, mode: "insensitive" } },
-					],
-				}
-			: {}),
-	};
-
-	const orderBy =
-		sort === "name"
-			? [{ name: dir }, { createdAt: "desc" }]
-			: sort === "status"
-				? [{ approved: dir }, { createdAt: "desc" }]
-				: sort === "members"
-					? [{ members: { _count: dir } }, { createdAt: "desc" }]
-					: sort === "city"
-						? [{ city: dir }, { createdAt: "desc" }]
-						: [{ createdAt: dir }];
-
-	const [agencies, filteredCount, totalCount, approvedCount, pendingCount, totalMembers] = await Promise.all([
-		prisma.agency.findMany({
-			where,
-			orderBy,
-			skip: (page - 1) * PAGE_SIZE,
-			take: PAGE_SIZE,
-			include: {
-				_count: { select: { members: true } },
-			},
-		}),
-		prisma.agency.count({ where }),
+	const [initialData, totalCount, approvedCount, pendingCount, totalMembers] = await Promise.all([
+		getAdminAgenciesPage(params),
 		prisma.agency.count(),
 		prisma.agency.count({ where: { approved: true } }),
 		prisma.agency.count({ where: { approved: false } }),
 		prisma.userProfile.count({ where: { agencyId: { not: null } } }),
 	]);
 
-	const totalPages = Math.max(1, Math.ceil(filteredCount / PAGE_SIZE));
-	const safePage = Math.min(page, totalPages);
-	const pageStart = filteredCount === 0 ? 0 : (safePage - 1) * PAGE_SIZE + 1;
-	const pageEnd = Math.min(safePage * PAGE_SIZE, filteredCount);
-
 	function hrefWith(next) {
-		const merged = {
-			q,
-			status,
-			sort,
-			dir,
-			page,
-			...next,
-		};
+		const merged = { q, status, sort, dir, page: 1, ...next };
 		const usp = new URLSearchParams();
 		if (merged.q) usp.set("q", merged.q);
 		if (merged.status && merged.status !== "all") usp.set("status", merged.status);
@@ -112,6 +41,9 @@ export default async function AdminAgenciesPage({ searchParams }) {
 		return hrefWith({ sort: column, dir: nextDir, page: 1 });
 	}
 
+	const queryString = hrefWith({ page: 1 }).split("?")[1] || "";
+	const storageKey = `admin-agencies:${queryString || "default"}`;
+
 	const stats = [
 		{ label: "Agences", value: totalCount, icon: Building2 },
 		{ label: "Approuvées", value: approvedCount, icon: ShieldCheck },
@@ -120,7 +52,7 @@ export default async function AdminAgenciesPage({ searchParams }) {
 	];
 
 	return (
-		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-neutral-100">
+		<div className="mx-auto flex min-h-[calc(100svh-5.625rem)] max-w-7xl flex-col space-y-6 bg-neutral-100 p-6 lg:p-8">
 			<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 				{stats.map(({ label, value, icon: Icon }) => (
 					<div
@@ -202,14 +134,7 @@ export default async function AdminAgenciesPage({ searchParams }) {
 				</div>
 			</div>
 
-			<div className="flex items-center justify-between text-sm text-muted-foreground">
-				<p>{filteredCount === 0 ? "Aucun résultat" : `${pageStart}-${pageEnd} sur ${filteredCount} agences`}</p>
-				<p>
-					Tri: <span className="font-medium text-foreground">{sort}</span> ({dir})
-				</p>
-			</div>
-
-			{agencies.length === 0 ? (
+			{initialData.items.length === 0 ? (
 				<Card className="p-12 text-center">
 					<Building2 className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
 					<p className="text-muted-foreground">
@@ -221,121 +146,21 @@ export default async function AdminAgenciesPage({ searchParams }) {
 					</p>
 				</Card>
 			) : (
-				<>
-					<div className="rounded-lg border bg-white overflow-hidden">
-						<Table>
-							<TableHeader className="bg-[#171717]  hover:bg-[#171717] text-white hover:pointer-events-none">
-								<TableRow>
-									<TableHead className="text-white border-r border-white text-center">
-										<SortHeaderLink
-											href={getSortHref("name")}
-											label="Agence"
-											active={sort === "name"}
-											dir={dir}
-										/>
-									</TableHead>
-									<TableHead className="text-white border-r border-white text-center">
-										<SortHeaderLink
-											href={getSortHref("city")}
-											label="Localisation"
-											active={sort === "city"}
-											dir={dir}
-										/>
-									</TableHead>
-									<TableHead className="text-white border-r border-white text-center">
-										<SortHeaderLink
-											href={getSortHref("members")}
-											label="Membres"
-											active={sort === "members"}
-											dir={dir}
-										/>
-									</TableHead>
-									<TableHead className="text-white border-r border-white text-center">
-										<SortHeaderLink
-											href={getSortHref("status")}
-											label="Statut"
-											active={sort === "status"}
-											dir={dir}
-										/>
-									</TableHead>
-									<TableHead className="text-white border-r border-white text-center">
-										<SortHeaderLink
-											href={getSortHref("createdAt")}
-											label="Créée le"
-											active={sort === "createdAt"}
-											dir={dir}
-										/>
-									</TableHead>
-									<TableHead className="text-white border-r border-white text-center">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{agencies.map((a) => (
-									<TableRow key={a.id}>
-										<TableCell className="text-center border">
-											<Link
-												href={`/admin/agencies/${a.id}`}
-												className="flex items-center gap-3 hover:underline"
-											>
-												{a.logoUrl ? (
-													// eslint-disable-next-line @next/next/no-img-element
-													<img
-														src={a.logoUrl}
-														alt={a.name}
-														className="h-10 w-10 rounded object-cover shrink-0"
-													/>
-												) : (
-													<div className="h-10 w-10 rounded bg-muted flex items-center justify-center shrink-0">
-														<Building2 className="h-5 w-5 text-muted-foreground" />
-													</div>
-												)}
-												<div>
-													<p className="font-medium">{a.name}</p>
-												</div>
-											</Link>
-										</TableCell>
-										<TableCell className="text-center border">
-											{a.city || "—"}
-											{a.province && `, ${a.province}`}
-										</TableCell>
-										<TableCell className="text-center border">{a._count.members}</TableCell>
-										<TableCell className="text-center border">
-											<Badge variant={a.approved ? "default" : "secondary"}>{a.approved ? "Approuvée" : "En attente"}</Badge>
-										</TableCell>
-										<TableCell className="text-center border">{new Date(a.createdAt).toLocaleDateString("fr-FR")}</TableCell>
-										<TableCell className="text-center border">
-											<AgencyRowActions agency={a} />
-										</TableCell>
-									</TableRow>
-								))}
-							</TableBody>
-						</Table>
-					</div>
-
-					{totalPages > 1 ? (
-						<div className="flex items-center justify-between rounded-lg border bg-white px-3 py-2">
-							<Link
-								href={safePage > 1 ? hrefWith({ page: safePage - 1 }) : "#"}
-								className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm ${safePage > 1 ? "hover:bg-muted" : "pointer-events-none opacity-50"}`}
-							>
-								<ChevronLeft className="mr-1 h-4 w-4" />
-								Précédent
-							</Link>
-
-							<div className="text-sm text-muted-foreground">
-								Page <span className="font-medium text-foreground">{safePage}</span> / {totalPages}
-							</div>
-
-							<Link
-								href={safePage < totalPages ? hrefWith({ page: safePage + 1 }) : "#"}
-								className={`inline-flex items-center rounded-md border px-3 py-1.5 text-sm ${safePage < totalPages ? "hover:bg-muted" : "pointer-events-none opacity-50"}`}
-							>
-								Suivant
-								<ChevronRight className="ml-1 h-4 w-4" />
-							</Link>
-						</div>
-					) : null}
-				</>
+				<AdminAgenciesInfiniteTable
+					key={queryString || "agencies-default"}
+					initialData={initialData}
+					queryString={queryString}
+					storageKey={storageKey}
+					sort={sort}
+					dir={dir}
+					sortHrefs={{
+						name: getSortHref("name"),
+						city: getSortHref("city"),
+						members: getSortHref("members"),
+						status: getSortHref("status"),
+						createdAt: getSortHref("createdAt"),
+					}}
+				/>
 			)}
 		</div>
 	);

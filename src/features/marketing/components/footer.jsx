@@ -1,6 +1,6 @@
 import { dict } from "@/lib/i18n";
 import { FaInstagram, FaYoutube, FaLinkedin, FaEnvelope } from "react-icons/fa";
-import Logo from "../logo";
+import Logo from "@/components/logo";
 
 export default function Footer({ locale = "fr" }) {
 	const t = dict[locale]?.footer ?? dict.fr?.footer ?? dict.en?.footer;

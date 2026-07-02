@@ -1,62 +1,25 @@
 "use server";
 
-import { existsSync } from "fs";
-import { mkdir, writeFile } from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
-import { getCommunityEnabled } from "@/lib/platform-settings";
-
-const COMMUNITY_IMAGE_CONFIG = {
-	allowedMimes: ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"],
-	maxSize: 5 * 1024 * 1024,
-};
-
-async function requireUser() {
-	const session = await auth();
-	if (!session?.user?.id) throw new Error("Non autorise");
-	const communityEnabled = await getCommunityEnabled();
-	if (!communityEnabled) throw new Error("La communauté est actuellement désactivée");
-	return session.user;
-}
-
-function canModerate(user, authorId) {
-	return user.id === authorId || user.role === "ADMIN";
-}
-
-async function uploadCommunityImage({ file, sessionUserId }) {
-	if (!COMMUNITY_IMAGE_CONFIG.allowedMimes.includes(file.type)) {
-		return { error: `Format invalide. Recu : ${file.type}` };
-	}
-
-	if (file.size > COMMUNITY_IMAGE_CONFIG.maxSize) {
-		return { error: "Image trop volumineuse (5 MB max)" };
-	}
-
-	const ext = (path.extname(file.name) || "").toLowerCase();
-	const uploadDir = path.join(process.cwd(), "public", "uploads", "community", "posts");
-	if (!existsSync(uploadDir)) {
-		await mkdir(uploadDir, { recursive: true });
-	}
-
-	const filename = `${sessionUserId}-${randomUUID()}${ext}`;
-	const filePath = path.join(uploadDir, filename);
-
-	const bytes = await file.arrayBuffer();
-	await writeFile(filePath, Buffer.from(bytes));
-
-	return {
-		url: `/uploads/community/posts/${filename}`,
-	};
-}
+import { canModerateCommunityContent, requireCommunityUser } from "@/features/community/server/community-guards";
+import { uploadCommunityPostImageFile, uploadCommunityStoryImageFile } from "@/features/community/server/community-media-upload";
 
 const createPostSchema = z.object({
 	content: z.string().trim().min(3, "Le message est trop court").max(4000, "Message trop long"),
 	imageUrl: z.string().trim().optional(),
 });
+
+const createStorySchema = z
+	.object({
+		content: z.string().trim().max(500, "Story trop longue").optional().or(z.literal("")),
+		imageUrl: z.string().trim().optional(),
+	})
+	.refine((data) => Boolean((data.content || "").trim()) || Boolean((data.imageUrl || "").trim()), {
+		message: "Ajoute du texte ou une image",
+		path: ["content"],
+	});
 
 const createCommentSchema = z.object({
 	postId: z.string().cuid("Post invalide"),
@@ -87,21 +50,35 @@ const notificationIdSchema = z.object({
 });
 
 export async function uploadCommunityPostImage(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 	const file = formData.get("file");
 
 	if (!file || typeof file === "string") {
 		return { error: "Aucun fichier recu" };
 	}
 
-	return uploadCommunityImage({
+	return uploadCommunityPostImageFile({
+		file,
+		sessionUserId: user.id,
+	});
+}
+
+export async function uploadCommunityStoryImage(formData) {
+	const user = await requireCommunityUser();
+	const file = formData.get("file");
+
+	if (!file || typeof file === "string") {
+		return { error: "Aucun fichier recu" };
+	}
+
+	return uploadCommunityStoryImageFile({
 		file,
 		sessionUserId: user.id,
 	});
 }
 
 export async function createCommunityPost(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = createPostSchema.safeParse({
 		content: formData.get("content") || "",
@@ -126,8 +103,37 @@ export async function createCommunityPost(formData) {
 	return { success: true };
 }
 
+export async function createCommunityStory(formData) {
+	const user = await requireCommunityUser();
+
+	const parsed = createStorySchema.safeParse({
+		content: formData.get("content") || "",
+		imageUrl: formData.get("imageUrl") || "",
+	});
+
+	if (!parsed.success) {
+		return { error: parsed.error.issues[0].message };
+	}
+
+	const data = parsed.data;
+	const expiresAt = new Date();
+	expiresAt.setHours(expiresAt.getHours() + 24);
+
+	await prisma.communityStory.create({
+		data: {
+			authorId: user.id,
+			content: data.content?.trim() || null,
+			imageUrl: data.imageUrl || null,
+			expiresAt,
+		},
+	});
+
+	revalidatePath("/community");
+	return { success: true };
+}
+
 export async function createCommunityComment(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = createCommentSchema.safeParse({
 		postId: formData.get("postId") || "",
@@ -169,7 +175,7 @@ export async function createCommunityComment(formData) {
 }
 
 export async function updateCommunityPost(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = updatePostSchema.safeParse({
 		postId: formData.get("postId") || "",
@@ -186,7 +192,7 @@ export async function updateCommunityPost(formData) {
 		select: { id: true, authorId: true },
 	});
 	if (!post) return { error: "Publication introuvable" };
-	if (!canModerate(user, post.authorId)) return { error: "Non autorise" };
+	if (!canModerateCommunityContent(user, post.authorId)) return { error: "Non autorise" };
 
 	await prisma.communityPost.update({
 		where: { id: post.id },
@@ -202,7 +208,7 @@ export async function updateCommunityPost(formData) {
 }
 
 export async function deleteCommunityPost(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = deletePostSchema.safeParse({
 		postId: formData.get("postId") || "",
@@ -217,7 +223,7 @@ export async function deleteCommunityPost(formData) {
 		select: { id: true, authorId: true },
 	});
 	if (!post) return { error: "Publication introuvable" };
-	if (!canModerate(user, post.authorId)) return { error: "Non autorise" };
+	if (!canModerateCommunityContent(user, post.authorId)) return { error: "Non autorise" };
 
 	await prisma.communityPost.delete({ where: { id: post.id } });
 
@@ -226,7 +232,7 @@ export async function deleteCommunityPost(formData) {
 }
 
 export async function updateCommunityComment(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = updateCommentSchema.safeParse({
 		commentId: formData.get("commentId") || "",
@@ -242,7 +248,7 @@ export async function updateCommunityComment(formData) {
 		select: { id: true, authorId: true },
 	});
 	if (!comment) return { error: "Commentaire introuvable" };
-	if (!canModerate(user, comment.authorId)) return { error: "Non autorise" };
+	if (!canModerateCommunityContent(user, comment.authorId)) return { error: "Non autorise" };
 
 	await prisma.communityComment.update({
 		where: { id: comment.id },
@@ -254,7 +260,7 @@ export async function updateCommunityComment(formData) {
 }
 
 export async function deleteCommunityComment(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = deleteCommentSchema.safeParse({
 		commentId: formData.get("commentId") || "",
@@ -269,7 +275,7 @@ export async function deleteCommunityComment(formData) {
 		select: { id: true, authorId: true },
 	});
 	if (!comment) return { error: "Commentaire introuvable" };
-	if (!canModerate(user, comment.authorId)) return { error: "Non autorise" };
+	if (!canModerateCommunityContent(user, comment.authorId)) return { error: "Non autorise" };
 
 	await prisma.communityComment.delete({ where: { id: comment.id } });
 
@@ -278,7 +284,7 @@ export async function deleteCommunityComment(formData) {
 }
 
 export async function toggleCommunityPostLike(postId) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 	if (!postId) return { error: "Publication invalide" };
 
 	const post = await prisma.communityPost.findUnique({
@@ -331,8 +337,41 @@ export async function toggleCommunityPostLike(postId) {
 	return { success: true };
 }
 
+export async function markCommunityStoryViewed(storyId) {
+	const user = await requireCommunityUser();
+	if (!storyId) return { error: "Story invalide" };
+
+	const story = await prisma.communityStory.findUnique({
+		where: { id: storyId },
+		select: { id: true, expiresAt: true },
+	});
+
+	if (!story || story.expiresAt <= new Date()) {
+		return { error: "Story introuvable" };
+	}
+
+	await prisma.communityStoryView.upsert({
+		where: {
+			storyId_userId: {
+				storyId,
+				userId: user.id,
+			},
+		},
+		update: {
+			viewedAt: new Date(),
+		},
+		create: {
+			storyId,
+			userId: user.id,
+		},
+	});
+
+	revalidatePath("/community");
+	return { success: true };
+}
+
 export async function markCommunityNotificationAsRead(formData) {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	const parsed = notificationIdSchema.safeParse({
 		notificationId: formData.get("notificationId") || "",
@@ -355,7 +394,7 @@ export async function markCommunityNotificationAsRead(formData) {
 }
 
 export async function markAllCommunityNotificationsAsRead() {
-	const user = await requireUser();
+	const user = await requireCommunityUser();
 
 	await prisma.communityNotification.updateMany({
 		where: {
