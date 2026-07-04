@@ -133,6 +133,15 @@ export default async function CommunityPage({ searchParams }) {
 						profile: { select: { publicProfile: true, jobTitle: true, company: true } },
 					},
 				},
+				agency: {
+					select: {
+						id: true,
+						slug: true,
+						name: true,
+						logoUrl: true,
+						adminUserId: true,
+					},
+				},
 				likes: {
 					where: { userId },
 					select: { id: true },
@@ -169,6 +178,14 @@ export default async function CommunityPage({ searchParams }) {
 					select: {
 						jobTitle: true,
 						company: true,
+						agency: {
+							select: {
+								id: true,
+								slug: true,
+								name: true,
+								approved: true,
+							},
+						},
 					},
 				},
 			},
@@ -200,6 +217,8 @@ export default async function CommunityPage({ searchParams }) {
 	const totalPages = Math.max(1, Math.ceil(totalPosts / PAGE_SIZE));
 	const hasPrevPage = page > 1;
 	const hasNextPage = page < totalPages;
+	const memberAgency = currentMember?.profile?.agency || null;
+	const canAccessMemberAgencyPage = Boolean(memberAgency?.approved && memberAgency?.slug);
 
 	return (
 		<div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -211,6 +230,35 @@ export default async function CommunityPage({ searchParams }) {
 							placeholder="Qu'est-ce que tu veux partager avec la communauté aujourd'hui ?"
 							submitLabel="Publier"
 						/>
+					</CardContent>
+				</Card>
+
+				{/* AGENCY PAGES SHORTCUTS */}
+				<Card className="rounded-3xl border-0 bg-white shadow-sm">
+					<CardContent className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
+						<div>
+							<p className="text-sm font-medium text-foreground">Pages d'agence</p>
+							<p className="text-xs text-muted-foreground">Retrouvez les pages officielles des agences dans la communauté.</p>
+						</div>
+						<div className="flex flex-wrap items-center gap-2">
+							<Button
+								asChild
+								variant="outline"
+								size="sm"
+								className="rounded-full"
+							>
+								<Link href="/community/agencies">Explorer les pages</Link>
+							</Button>
+							{canAccessMemberAgencyPage ? (
+								<Button
+									asChild
+									size="sm"
+									className="rounded-full"
+								>
+									<Link href={`/community/agencies/${memberAgency.slug}`}>Ma page d'agence</Link>
+								</Button>
+							) : null}
+						</div>
 					</CardContent>
 				</Card>
 
@@ -233,7 +281,7 @@ export default async function CommunityPage({ searchParams }) {
 						// POSTS LIST
 						posts.map((post) => {
 							const hasLiked = post.likes.length > 0;
-							const canModeratePost = isAdmin || post.authorId === userId;
+							const canModeratePost = isAdmin || post.authorId === userId || post.agency?.adminUserId === userId;
 							const authorInitials = initialsFromName(post.author.name, post.author.email);
 							const postAuthorSlug = post.author.username || post.author.id;
 							const canVisitPostAuthorProfile = Boolean(postAuthorSlug);
@@ -275,6 +323,14 @@ export default async function CommunityPage({ searchParams }) {
 													) : (
 														<p className="font-medium">{post.author.name || post.author.email}</p>
 													)}
+													{post.agency?.slug ? (
+														<Link
+															href={`/community/agencies/${post.agency.slug}`}
+															className="inline-flex items-center rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 transition-colors hover:bg-amber-200"
+														>
+															Page {post.agency.name}
+														</Link>
+													) : null}
 												</div>
 												<p className="text-xs text-muted-foreground">
 													{formatSocialRelativeTime(post.createdAt)}

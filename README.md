@@ -34,3 +34,31 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Private Certificate Signature
+
+To avoid exposing a signature file through a public URL, configure a server-only path:
+
+1. Store the signature image outside `public/` (for example: `private-assets/certificates/signature-yvan-blanchette.png`).
+2. Add `CERTIFICATE_SIGNATURE_PATH` in `.env` with either:
+   - an absolute path, or
+   - a path relative to the project root.
+
+Example:
+
+```bash
+CERTIFICATE_SIGNATURE_PATH=private-assets/certificates/signature-yvan-blanchette.png
+```
+
+If this variable is not set or the file is missing, certificate generation falls back to the text signature.
+
+You can configure the certificate seal the same way:
+
+```bash
+CERTIFICATE_SEAL_PATH=private-assets/certificates/ava-seal-FR.png
+```
+
+If this variable is not set, the app will try these defaults in order:
+
+1. `private-assets/certificates/ava-seal-FR.png`
+2. `public/images/ava-seal-FR.png`

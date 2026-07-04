@@ -63,11 +63,10 @@ export function LessonSidebar({ course, completedSet }) {
 									<li className="w-full">
 										<Link
 											href={`/learn/${course.id}/quiz/${mod.quiz.id}`}
-											className={cn("flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors", "hover:bg-muted opacity-75")}
+											className={cn("flex w-full items-center gap-2 rounded-md px-2 py-2 text-sm transition-colors", "hover:bg-muted")}
 										>
 											<ListChecks className="h-4 w-4 shrink-0 ml-6" />
 											<span className="line-clamp-2 flex-1">Test du module</span>
-											<span className="text-xs text-muted-foreground">Bientôt</span>
 										</Link>
 									</li>
 								)}

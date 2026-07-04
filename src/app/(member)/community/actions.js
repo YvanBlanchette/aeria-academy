@@ -10,6 +10,7 @@ import { uploadCommunityPostImageFile, uploadCommunityStoryImageFile } from "@/f
 const createPostSchema = z.object({
 	content: z.string().trim().min(3, "Le message est trop court").max(4000, "Message trop long"),
 	imageUrl: z.string().trim().optional(),
+	agencyId: z.string().cuid("Agence invalide").optional().or(z.literal("")),
 });
 
 const createStorySchema = z
@@ -84,6 +85,7 @@ export async function createCommunityPost(formData) {
 	const parsed = createPostSchema.safeParse({
 		content: formData.get("content") || "",
 		imageUrl: formData.get("imageUrl") || "",
+		agencyId: formData.get("agencyId") || "",
 	});
 
 	if (!parsed.success) {
@@ -91,9 +93,32 @@ export async function createCommunityPost(formData) {
 	}
 
 	const data = parsed.data;
+	const targetAgencyId = data.agencyId ? String(data.agencyId) : null;
+
+	if (targetAgencyId) {
+		const profile = await prisma.userProfile.findUnique({
+			where: { userId: user.id },
+			select: { agencyId: true },
+		});
+
+		if (!profile?.agencyId || profile.agencyId !== targetAgencyId) {
+			return { error: "Tu dois appartenir a cette agence pour publier sur sa page" };
+		}
+
+		const agency = await prisma.agency.findUnique({
+			where: { id: targetAgencyId },
+			select: { id: true, approved: true, slug: true },
+		});
+
+		if (!agency?.approved) {
+			return { error: "Cette agence n'est pas encore validee" };
+		}
+	}
+
 	await prisma.communityPost.create({
 		data: {
 			authorId: user.id,
+			agencyId: targetAgencyId,
 			type: "UPDATE",
 			content: data.content,
 			imageUrl: data.imageUrl || null,
@@ -101,6 +126,16 @@ export async function createCommunityPost(formData) {
 	});
 
 	revalidatePath("/community");
+	revalidatePath("/community/agencies");
+	if (targetAgencyId) {
+		const agency = await prisma.agency.findUnique({
+			where: { id: targetAgencyId },
+			select: { slug: true },
+		});
+		if (agency?.slug) {
+			revalidatePath(`/community/agencies/${agency.slug}`);
+		}
+	}
 	return { success: true };
 }
 
@@ -147,7 +182,15 @@ export async function createCommunityComment(formData) {
 
 	const post = await prisma.communityPost.findUnique({
 		where: { id: parsed.data.postId },
-		select: { id: true, authorId: true },
+		select: {
+			id: true,
+			authorId: true,
+			agency: {
+				select: {
+					slug: true,
+				},
+			},
+		},
 	});
 	if (!post) return { error: "Publication introuvable" };
 
@@ -177,6 +220,10 @@ export async function createCommunityComment(formData) {
 	}
 
 	revalidatePath("/community");
+	revalidatePath("/community/agencies");
+	if (post.agency?.slug) {
+		revalidatePath(`/community/agencies/${post.agency.slug}`);
+	}
 	return { success: true };
 }
 
@@ -195,10 +242,19 @@ export async function updateCommunityPost(formData) {
 
 	const post = await prisma.communityPost.findUnique({
 		where: { id: parsed.data.postId },
-		select: { id: true, authorId: true },
+		select: {
+			id: true,
+			authorId: true,
+			agency: {
+				select: {
+					adminUserId: true,
+				},
+			},
+		},
 	});
 	if (!post) return { error: "Publication introuvable" };
-	if (!canModerateCommunityContent(user, post.authorId)) return { error: "Non autorise" };
+	const isAgencyAdmin = Boolean(post.agency?.adminUserId && post.agency.adminUserId === user.id);
+	if (!canModerateCommunityContent(user, post.authorId) && !isAgencyAdmin) return { error: "Non autorise" };
 
 	await prisma.communityPost.update({
 		where: { id: post.id },
@@ -210,6 +266,10 @@ export async function updateCommunityPost(formData) {
 	});
 
 	revalidatePath("/community");
+	revalidatePath("/community/agencies");
+	if (post.agency?.slug) {
+		revalidatePath(`/community/agencies/${post.agency.slug}`);
+	}
 	return { success: true };
 }
 
@@ -226,10 +286,19 @@ export async function deleteCommunityPost(formData) {
 
 	const post = await prisma.communityPost.findUnique({
 		where: { id: parsed.data.postId },
-		select: { id: true, authorId: true },
+		select: {
+			id: true,
+			authorId: true,
+			agency: {
+				select: {
+					adminUserId: true,
+				},
+			},
+		},
 	});
 	if (!post) return { error: "Publication introuvable" };
-	if (!canModerateCommunityContent(user, post.authorId)) return { error: "Non autorise" };
+	const isAgencyAdmin = Boolean(post.agency?.adminUserId && post.agency.adminUserId === user.id);
+	if (!canModerateCommunityContent(user, post.authorId) && !isAgencyAdmin) return { error: "Non autorise" };
 
 	await prisma.communityPost.delete({ where: { id: post.id } });
 
@@ -295,7 +364,15 @@ export async function toggleCommunityPostLike(postId) {
 
 	const post = await prisma.communityPost.findUnique({
 		where: { id: postId },
-		select: { id: true, authorId: true },
+		select: {
+			id: true,
+			authorId: true,
+			agency: {
+				select: {
+					slug: true,
+				},
+			},
+		},
 	});
 	if (!post) return { error: "Publication introuvable" };
 
@@ -352,6 +429,10 @@ export async function toggleCommunityPostLike(postId) {
 	}
 
 	revalidatePath("/community");
+	revalidatePath("/community/agencies");
+	if (post.agency?.slug) {
+		revalidatePath(`/community/agencies/${post.agency.slug}`);
+	}
 	return { success: true };
 }
 

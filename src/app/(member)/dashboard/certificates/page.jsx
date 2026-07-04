@@ -52,6 +52,7 @@ export default async function CertificatesPage({ searchParams }) {
 						modules: {
 							select: {
 								lessons: { select: { id: true } },
+								quiz: { select: { id: true } },
 							},
 						},
 					},
@@ -70,6 +71,7 @@ export default async function CertificatesPage({ searchParams }) {
 						modules: {
 							select: {
 								lessons: { select: { id: true } },
+								quiz: { select: { id: true } },
 							},
 						},
 					},
@@ -90,6 +92,7 @@ export default async function CertificatesPage({ searchParams }) {
 			certificateIssuedAt: null,
 			certificateId: null,
 			totalLessons: enrollment.course.modules.reduce((sum, mod) => sum + mod.lessons.length, 0),
+			totalQuizzes: enrollment.course.modules.reduce((sum, mod) => sum + (mod.quiz ? 1 : 0), 0),
 		});
 	}
 
@@ -108,6 +111,7 @@ export default async function CertificatesPage({ searchParams }) {
 				certificateIssuedAt: certificate.issuedAt,
 				certificateId: certificate.id,
 				totalLessons: totalLessons,
+				totalQuizzes: certificate.course.modules.reduce((sum, mod) => sum + (mod.quiz ? 1 : 0), 0),
 			});
 		}
 	}
@@ -148,16 +152,55 @@ export default async function CertificatesPage({ searchParams }) {
 		progressMap.set(courseId, existing);
 	}
 
+	const passedQuizRows =
+		courseIds.length > 0
+			? await prisma.quizAttempt.findMany({
+					where: {
+						userId,
+						passed: true,
+						quiz: {
+							module: {
+								courseId: { in: courseIds },
+							},
+						},
+					},
+					select: {
+						quizId: true,
+						createdAt: true,
+						quiz: {
+							select: {
+								module: { select: { courseId: true } },
+							},
+						},
+					},
+					distinct: ["quizId"],
+				})
+			: [];
+
+	const passedQuizMap = new Map();
+	for (const row of passedQuizRows) {
+		const courseId = row.quiz.module.courseId;
+		const existing = passedQuizMap.get(courseId) || { passedQuizIds: new Set(), lastPassedAt: null };
+		existing.passedQuizIds.add(row.quizId);
+		if (!existing.lastPassedAt || row.createdAt > existing.lastPassedAt) {
+			existing.lastPassedAt = row.createdAt;
+		}
+		passedQuizMap.set(courseId, existing);
+	}
+
 	const allItems = Array.from(courseMap.values()).map((item) => {
 		const progress = progressMap.get(item.courseId);
 		const completedLessons = progress?.completedLessons || 0;
-		const progressPercent = item.totalLessons > 0 ? Math.min(100, Math.round((completedLessons / item.totalLessons) * 100)) : 0;
-		const statusKey = item.certificateIssuedAt ? "certified" : progressPercent >= 100 && item.totalLessons > 0 ? "ready" : "in_progress";
-		const sortDate = item.certificateIssuedAt || progress?.lastCompletedAt || item.enrolledAt;
+		const quizProgress = passedQuizMap.get(item.courseId);
+		const completedQuizzes = quizProgress?.passedQuizIds?.size || 0;
+		const progressPercent = item.totalQuizzes > 0 ? Math.min(100, Math.round((completedQuizzes / item.totalQuizzes) * 100)) : 0;
+		const statusKey = item.certificateIssuedAt ? "certified" : item.totalQuizzes > 0 && completedQuizzes >= item.totalQuizzes ? "ready" : "in_progress";
+		const sortDate = item.certificateIssuedAt || quizProgress?.lastPassedAt || progress?.lastCompletedAt || item.enrolledAt;
 
 		return {
 			...item,
 			completedLessons,
+			completedQuizzes,
 			progressPercent,
 			statusKey,
 			sortDate,
@@ -348,6 +391,9 @@ export default async function CertificatesPage({ searchParams }) {
 											<p className="text-xs text-muted-foreground mt-1">
 												{item.completedLessons} / {item.totalLessons} leçons complétées
 											</p>
+											<p className="text-xs text-muted-foreground mt-1">
+												{item.completedQuizzes} / {item.totalQuizzes} quiz réussi(s)
+											</p>
 										</div>
 										{item.statusKey === "certified" ? (
 											<Badge className="gap-1">
@@ -362,7 +408,7 @@ export default async function CertificatesPage({ searchParams }) {
 
 									<div className="space-y-1.5">
 										<div className="flex items-center justify-between text-xs">
-											<span className="text-muted-foreground">Progression</span>
+											<span className="text-muted-foreground">Validation quiz</span>
 											<span className="font-medium">{item.progressPercent}%</span>
 										</div>
 										<Progress
@@ -383,7 +429,9 @@ export default async function CertificatesPage({ searchParams }) {
 												})}
 											</p>
 										) : item.statusKey === "ready" ? (
-											<p>Tu as complété ce parcours. Finalise l&apos;évaluation pour valider le certificat.</p>
+											<p>Tous les quiz du cours sont réussis. Le certificat est maintenant disponible.</p>
+										) : item.totalQuizzes === 0 ? (
+											<p>Ce parcours n&apos;a pas encore de quiz configuré pour la certification.</p>
 										) : (
 											<p>Continue ce parcours pour débloquer ton certificat.</p>
 										)}

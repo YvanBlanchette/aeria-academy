@@ -26,6 +26,7 @@ export function buildSocialTabs(userSlug) {
 
 	return [
 		{ label: "Accueil", href: "/community", iconKey: "home" },
+		{ label: "Agences", href: "/community/agencies", iconKey: "building" },
 		{ label: "Profil", href: profileHref, iconKey: "profile" },
 		{ label: "Amis", href: "/community/friends", iconKey: "users" },
 	];

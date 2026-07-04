@@ -91,6 +91,7 @@ export function CommunityPostComposer({ user, placeholder, submitLabel = "Publie
 			action={handleSubmit}
 			className={shellClassName}
 		>
+			{cardStyle === "agency" ? <p className="text-xs font-medium text-amber-700">Publication sur la page de votre agence</p> : null}
 			{/* POST HEADER: AVATAR + CONTENT */}
 			<div className="flex items-start gap-2.5">
 				<div className="flex flex-col items-center gap-2.5">
@@ -154,6 +155,13 @@ export function CommunityPostComposer({ user, placeholder, submitLabel = "Publie
 						name="imageUrl"
 						value={imageUrl}
 					/>
+					{user?.agencyPostingId ? (
+						<input
+							type="hidden"
+							name="agencyId"
+							value={user.agencyPostingId}
+						/>
+					) : null}
 					{/* SUBMIT BUTTON */}
 					<Button
 						type="submit"

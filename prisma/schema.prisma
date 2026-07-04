@@ -195,6 +195,7 @@ model Agency {
   agencyPlanId String?  // nullable pour l'instant, on l'utilisera plus tard
   
   members     UserProfile[]
+  communityPosts CommunityPost[] @relation("AgencyCommunityPosts")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -391,6 +392,7 @@ model ContactMessage {
 model CommunityPost {
   id         String            @id @default(cuid())
   authorId   String
+  agencyId   String?
   type       CommunityPostType @default(UPDATE)
   content    String            @db.Text
   imageUrl   String?
@@ -398,11 +400,13 @@ model CommunityPost {
   updatedAt  DateTime          @updatedAt
 
   author     User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  agency     Agency?           @relation("AgencyCommunityPosts", fields: [agencyId], references: [id], onDelete: SetNull)
   comments   CommunityComment[]
   likes      CommunityPostLike[]
   notifications CommunityNotification[]
 
   @@index([authorId])
+  @@index([agencyId, createdAt])
   @@index([createdAt])
   @@index([type, createdAt])
 }

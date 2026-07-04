@@ -645,6 +645,14 @@ export default async function PublicProfilePage({ params }) {
 											{agency.city || agency.province ? (
 												<p className="text-muted-foreground">{[agency.city, agency.province].filter(Boolean).join(", ")}</p>
 											) : null}
+											{agency.slug ? (
+												<Link
+													href={`/community/agencies/${agency.slug}`}
+													className="text-xs font-medium text-primary hover:underline"
+												>
+													Voir la page de l'agence
+												</Link>
+											) : null}
 										</div>
 									</div>
 									{agency.description ? <p className="whitespace-pre-wrap text-muted-foreground">{agency.description}</p> : null}

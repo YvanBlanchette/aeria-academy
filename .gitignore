@@ -54,3 +54,6 @@ backup-*.sql
 # Uploads backup
 uploads-backup.zip
 
+# Private certificate signature assets
+/private-assets/certificates/
+

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserForm } from "@/components/admin/user-form";
 import { UserDeleteButton } from "@/components/admin/user-delete-button";
 import { UserQuickActions } from "@/components/admin/user-quick-actions";
+import { ManualCertificateGenerator } from "@/components/admin/manual-certificate-generator";
 import { Button } from "@/components/ui/button";
 
 export default async function UserDetailPage({ params }) {
@@ -105,6 +106,28 @@ export default async function UserDetailPage({ params }) {
 		btnLabel: "← Retour aux utilisateurs",
 		btnLink: "/admin/users",
 	};
+
+	const certificateCourseMap = new Map();
+	for (const enrollment of user.enrollments) {
+		certificateCourseMap.set(enrollment.course.id, {
+			id: enrollment.course.id,
+			title: enrollment.course.title,
+			hasCertificate: false,
+		});
+	}
+	for (const certificate of user.certificates) {
+		const existing = certificateCourseMap.get(certificate.course.id);
+		if (existing) {
+			existing.hasCertificate = true;
+		} else {
+			certificateCourseMap.set(certificate.course.id, {
+				id: certificate.course.id,
+				title: certificate.course.title,
+				hasCertificate: true,
+			});
+		}
+	}
+	const certificateCourses = Array.from(certificateCourseMap.values());
 
 	const timeline = [
 		...user.enrollments.map((item) => ({
@@ -268,6 +291,18 @@ export default async function UserDetailPage({ params }) {
 								<UserQuickActions
 									user={user}
 									currentUserId={session.user.id}
+								/>
+							</CardContent>
+						</Card>
+
+						<Card>
+							<CardHeader>
+								<CardTitle className="text-base">Generateur de certificat</CardTitle>
+							</CardHeader>
+							<CardContent>
+								<ManualCertificateGenerator
+									userId={user.id}
+									courses={certificateCourses}
 								/>
 							</CardContent>
 						</Card>

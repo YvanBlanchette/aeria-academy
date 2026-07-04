@@ -11,7 +11,7 @@ import { CommunityNotificationsMenu } from "@/components/community/community-not
 import { UserButtonClient as UserButton } from "@/components/ui/user-button-client";
 import { FaHouseChimney, FaUsers } from "react-icons/fa6";
 import { FaUserCircle } from "react-icons/fa";
-import { MessageSquare, Search } from "lucide-react";
+import { Building2, MessageSquare, Search } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { IoLogIn } from "react-icons/io5";
@@ -21,6 +21,7 @@ const TAB_ICONS = {
 	messages: MessageSquare,
 	profile: FaUserCircle,
 	users: FaUsers,
+	building: Building2,
 };
 
 function isActiveTab(pathname, href) {

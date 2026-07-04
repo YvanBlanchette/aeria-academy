@@ -37,6 +37,11 @@ const createUserSchema = userSchema.extend({
 	emailVerified: z.boolean().optional(),
 });
 
+const manualCertificateSchema = z.object({
+	userId: z.string().cuid("Utilisateur invalide"),
+	courseId: z.string().cuid("Cours invalide"),
+});
+
 async function buildUniqueUsername(baseInput) {
 	let base = slugify(baseInput || "");
 	if (!base) base = "user";
@@ -212,4 +217,83 @@ export async function resetUserPasswordTemp(userId) {
 
 	revalidatePath(`/admin/users/${userId}`);
 	return { success: true, tempPassword };
+}
+
+export async function generateManualCertificateForUser(userId, courseId) {
+	await requireAdmin();
+
+	const parsed = manualCertificateSchema.safeParse({ userId, courseId });
+	if (!parsed.success) {
+		return { error: parsed.error.issues[0].message };
+	}
+
+	const [user, course] = await Promise.all([
+		prisma.user.findUnique({
+			where: { id: parsed.data.userId },
+			select: { id: true },
+		}),
+		prisma.course.findUnique({
+			where: { id: parsed.data.courseId },
+			select: { id: true },
+		}),
+	]);
+
+	if (!user) {
+		return { error: "Utilisateur introuvable" };
+	}
+
+	if (!course) {
+		return { error: "Cours introuvable" };
+	}
+
+	await prisma.enrollment.upsert({
+		where: {
+			userId_courseId: {
+				userId: parsed.data.userId,
+				courseId: parsed.data.courseId,
+			},
+		},
+		update: {},
+		create: {
+			userId: parsed.data.userId,
+			courseId: parsed.data.courseId,
+		},
+	});
+
+	const existing = await prisma.certificate.findUnique({
+		where: {
+			userId_courseId: {
+				userId: parsed.data.userId,
+				courseId: parsed.data.courseId,
+			},
+		},
+		select: { id: true },
+	});
+
+	if (existing) {
+		return {
+			success: true,
+			alreadyExists: true,
+			certificateId: existing.id,
+		};
+	}
+
+	const certificate = await prisma.certificate.create({
+		data: {
+			userId: parsed.data.userId,
+			courseId: parsed.data.courseId,
+		},
+		select: { id: true },
+	});
+
+	revalidatePath("/admin/users");
+	revalidatePath(`/admin/users/${parsed.data.userId}`);
+	revalidatePath("/dashboard");
+	revalidatePath("/dashboard/certificates");
+
+	return {
+		success: true,
+		alreadyExists: false,
+		certificateId: certificate.id,
+	};
 }
