@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { toast } from "sonner";
 import Logo from "@/components/logo";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { resetPassword } from "@/app/(auth)/password-reset/actions";
 
-export default function ResetPasswordPage() {
+function ResetPasswordPageContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const token = searchParams.get("token") || "";
@@ -113,5 +113,32 @@ export default function ResetPasswordPage() {
 				</CardContent>
 			</Card>
 		</div>
+	);
+}
+
+function ResetPasswordPageFallback() {
+	return (
+		<div className="flex min-h-screen items-center justify-center bg-neutral-50 px-4 py-8">
+			<Card className="w-full max-w-md px-4 py-6 shadow-md">
+				<CardHeader className="space-y-2">
+					<div className="mb-3 flex items-center justify-center">
+						<Logo
+							locale="fr"
+							scrolled
+						/>
+					</div>
+					<CardTitle className="text-2xl">Nouveau mot de passe</CardTitle>
+					<CardDescription>Chargement du formulaire...</CardDescription>
+				</CardHeader>
+			</Card>
+		</div>
+	);
+}
+
+export default function ResetPasswordPage() {
+	return (
+		<Suspense fallback={<ResetPasswordPageFallback />}>
+			<ResetPasswordPageContent />
+		</Suspense>
 	);
 }
