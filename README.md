@@ -62,3 +62,28 @@ If this variable is not set, the app will try these defaults in order:
 
 1. `private-assets/certificates/ava-seal-FR.png`
 2. `public/images/ava-seal-FR.png`
+
+## Password Reset With Resend
+
+To enable password reset emails with Resend, set these environment variables:
+
+```bash
+RESEND_API_KEY=re_xxxxx
+RESEND_FROM_EMAIL=AERIA <noreply@your-domain.com>
+NEXTAUTH_URL=https://your-domain.com
+PASSWORD_RESET_TOKEN_SECRET=choose-a-long-random-secret
+```
+
+Then run the Prisma migration to create the reset-token table:
+
+```bash
+npx prisma migrate deploy
+```
+
+For local development, you can also run:
+
+```bash
+npx prisma migrate dev
+```
+
+Rate limiting is now enforced on forgot-password requests (per email and per IP, database-backed, sliding 15-minute window) with a resend cooldown of 5 minutes.

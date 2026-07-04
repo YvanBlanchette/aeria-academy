@@ -61,6 +61,11 @@ enum MessagePermissionScope {
   NOBODY
 }
 
+enum BadgeType {
+  MODULE_COMPLETION
+  QUIZ_PASSED
+}
+
 model User {
   id            String    @id @default(cuid())
   username      String?   @unique
@@ -106,6 +111,7 @@ model User {
   friendshipsAsUserB UserFriendship[] @relation("FriendshipUserB")
   blocksInitiated UserBlock[] @relation("UserBlocker")
   blocksReceived UserBlock[] @relation("UserBlocked")
+  badges        UserBadge[]
   settingsAuditLogs AdminSettingsAuditLog[]
   dashboardSettings UserDashboardSettings?
 }
@@ -374,6 +380,25 @@ model Certificate {
   @@unique([userId, courseId])
 }
 
+model UserBadge {
+  id          String    @id @default(cuid())
+  userId      String
+  badgeType   BadgeType
+  title       String
+  description String?   @db.Text
+  courseId    String?
+  moduleId    String?
+  quizId      String?
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeType, moduleId])
+  @@unique([userId, badgeType, quizId])
+  @@index([userId, createdAt])
+  @@index([courseId, createdAt])
+}
+
 model ContactMessage {
   id            String   @id @default(cuid())
   fullName      String
@@ -575,6 +600,27 @@ model Session {
   userId       String
   expires      DateTime
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  email     String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([email, expiresAt])
+}
+
+model PasswordResetRequestAttempt {
+  id        String   @id @default(cuid())
+  emailHash String
+  ipHash    String
+  createdAt DateTime @default(now())
+
+  @@index([emailHash, createdAt])
+  @@index([ipHash, createdAt])
 }
 
 model Article {

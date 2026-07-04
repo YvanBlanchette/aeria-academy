@@ -388,246 +388,223 @@ export function CourseForm({ course }) {
 		description.length >= 120 && description.length <= 180 ? "optimal" : description.length >= 80 && description.length <= 240 ? "ok" : "weak";
 
 	return (
-		<div className="grid gap-6 xl:grid-cols-[1fr_320px] w-full">
-			<div className="w-full">
-				<form
-					onSubmit={handleSubmit}
-					className="space-y-6"
-				>
-					<Card>
-						<CardHeader>
-							<CardTitle>{isEdit ? "Modifier le cours" : "Créer un cours"}</CardTitle>
-							<CardDescription>{isEdit ? "Modifie les informations du cours." : "Tu pourras ajouter les modules et leçons ensuite."}</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="title">Titre du cours *</Label>
+		<div className="grid gap-6 w-full">
+			<form
+				onSubmit={handleSubmit}
+				className="space-y-6"
+			>
+				<Card>
+					<CardHeader>
+						<CardTitle>{isEdit ? "Modifier le cours" : "Créer un cours"}</CardTitle>
+						<CardDescription>{isEdit ? "Modifie les informations du cours." : "Tu pourras ajouter les modules et leçons ensuite."}</CardDescription>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="space-y-2">
+							<Label htmlFor="title">Titre du cours *</Label>
+							<Input
+								id="title"
+								name="title"
+								value={title}
+								onChange={(e) => {
+									setIsDirty(true);
+									setTitle(e.target.value);
+								}}
+								placeholder="Ex: Introduction a AERIA"
+								required
+								className="bg-neutral-50 shadow-inner"
+							/>
+						</div>
+
+						<div className="space-y-2">
+							<Label htmlFor="price">Prix ($)</Label>
+							<Input
+								id="price"
+								name="price"
+								type="number"
+								step="0.01"
+								min="0"
+								value={price}
+								onChange={(e) => {
+									setIsDirty(true);
+									setPrice(e.target.value);
+								}}
+								required
+								className="bg-neutral-50 shadow-inner"
+							/>
+							<p className="text-xs text-muted-foreground">Mettre 0 pour un cours gratuit</p>
+						</div>
+
+						<div className="space-y-2">
+							<Label>Miniature du cours</Label>
+							<ImageUpload
+								name="thumbnail"
+								value={thumbnail}
+								onChange={(v) => {
+									setIsDirty(true);
+									setThumbnail(v);
+								}}
+							/>
+						</div>
+					</CardContent>
+				</Card>
+
+				<Card className={clsx(isFocusMode && "fixed inset-4 z-50 overflow-auto bg-neutral-100 shadow-xl")}>
+					<CardHeader>
+						<div className="flex flex-col justify-between gap-2">
+							<div>
+								<CardTitle>Description du cours</CardTitle>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleUndo}
+									disabled={historyPast.length === 0}
+								>
+									<Undo2 className="mr-1 h-4 w-4" />
+									Undo
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={handleRedo}
+									disabled={historyFuture.length === 0}
+								>
+									<Redo2 className="mr-1 h-4 w-4" />
+									Redo
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => setViewMode("editor")}
+									className={clsx(viewMode === "editor" && "bg-neutral-200")}
+								>
+									<EyeOff className="mr-1 h-4 w-4" />
+									Editeur
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => setViewMode("preview")}
+									className={clsx(viewMode === "preview" && "bg-neutral-200")}
+								>
+									<Eye className="mr-1 h-4 w-4" />
+									Apercu
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => setViewMode("split")}
+									className={clsx(viewMode === "split" && "bg-neutral-200")}
+								>
+									<Columns3 className="mr-1 h-4 w-4" />
+									Split
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => setIsFocusMode((v) => !v)}
+								>
+									{isFocusMode ? <Minimize2 className="mr-1 h-4 w-4" /> : <Focus className="mr-1 h-4 w-4" />}
+									{isFocusMode ? "Quitter focus" : "Mode focus"}
+								</Button>
+							</div>
+						</div>
+					</CardHeader>
+					<CardContent className="space-y-4">
+						<div className="flex flex-wrap gap-2 border-b pb-3">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => insertAtCursor("\n## Sous-titre\n\n")}
+							>
+								H2
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => insertAtCursor("\n### Sous-section\n\n")}
+							>
+								H3
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => insertAtCursor("\n- Point 1\n- Point 2\n")}
+							>
+								Liste
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => insertAtCursor("\n```md\nVotre code ici\n```\n")}
+							>
+								<Code2 className="mr-1 h-3.5 w-3.5" />
+								Code
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => insertAtCursor("\n### Passez a l'action\n\nProchaine etape:\n")}
+							>
+								CTA
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => insertAtCursor("\n> Citation\n\n")}
+							>
+								Citation
+							</Button>
+						</div>
+
+						{/* <div className="rounded-md border bg-muted/20 p-3 space-y-2">
+							<div className="flex flex-col gap-2 md:flex-row md:items-center">
 								<Input
-									id="title"
-									name="title"
-									value={title}
-									onChange={(e) => {
-										setIsDirty(true);
-										setTitle(e.target.value);
-									}}
-									placeholder="Ex: Introduction a AERIA"
-									required
+									value={slashInput}
+									onChange={(e) => setSlashInput(e.target.value)}
+									placeholder="Commande rapide (ex: /h2, /list, /code, /quote)"
+									className="bg-white"
 								/>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="price">Prix ($)</Label>
-								<Input
-									id="price"
-									name="price"
-									type="number"
-									step="0.01"
-									min="0"
-									value={price}
-									onChange={(e) => {
-										setIsDirty(true);
-										setPrice(e.target.value);
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => {
+										if (!slashInput.trim()) return;
+										const ok = applySlashCommand(slashInput.trim().split(/\s+/)[0]);
+										if (!ok) toast.error("Commande slash inconnue");
 									}}
-									required
-								/>
-								<p className="text-xs text-muted-foreground">Mettre 0 pour un cours gratuit</p>
+								>
+									Appliquer /commande
+								</Button>
 							</div>
+							<p className="text-xs text-muted-foreground">Commandes: /h2, /h3, /list, /code, /quote, /cta</p>
+							{commandHint ? <p className="text-xs text-primary">{commandHint}</p> : null}
+						</div> */}
 
-							<div className="space-y-2">
-								<Label>Miniature du cours</Label>
-								<ImageUpload
-									name="thumbnail"
-									value={thumbnail}
-									onChange={(v) => {
-										setIsDirty(true);
-										setThumbnail(v);
-									}}
-								/>
+						{viewMode === "preview" ? (
+							<div className="min-h-100 rounded-md border p-6 bg-white">
+								{description ? (
+									<ReactMarkdown>{description}</ReactMarkdown>
+								) : (
+									<p className="text-muted-foreground">Apercu vide. Ecris du contenu pour le voir ici.</p>
+								)}
 							</div>
-						</CardContent>
-					</Card>
-
-					<Card className={clsx(isFocusMode && "fixed inset-4 z-50 overflow-auto bg-neutral-100 shadow-xl")}>
-						<CardHeader>
-							<div className="flex items-center justify-between gap-2">
-								<div>
-									<CardTitle>Description du cours</CardTitle>
-									<CardDescription>Editeur enrichi (Ctrl+B, Ctrl+I, Ctrl+K, Alt+2, Alt+3, Shift+8, Shift+C, Ctrl+Z/Y)</CardDescription>
-								</div>
-								<div className="flex flex-wrap gap-2">
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={handleUndo}
-										disabled={historyPast.length === 0}
-									>
-										<Undo2 className="mr-1 h-4 w-4" />
-										Undo
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={handleRedo}
-										disabled={historyFuture.length === 0}
-									>
-										<Redo2 className="mr-1 h-4 w-4" />
-										Redo
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => setViewMode("editor")}
-										className={clsx(viewMode === "editor" && "bg-neutral-200")}
-									>
-										<EyeOff className="mr-1 h-4 w-4" />
-										Editeur
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => setViewMode("preview")}
-										className={clsx(viewMode === "preview" && "bg-neutral-200")}
-									>
-										<Eye className="mr-1 h-4 w-4" />
-										Apercu
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => setViewMode("split")}
-										className={clsx(viewMode === "split" && "bg-neutral-200")}
-									>
-										<Columns3 className="mr-1 h-4 w-4" />
-										Split
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => setIsFocusMode((v) => !v)}
-									>
-										{isFocusMode ? <Minimize2 className="mr-1 h-4 w-4" /> : <Focus className="mr-1 h-4 w-4" />}
-										{isFocusMode ? "Quitter focus" : "Mode focus"}
-									</Button>
-								</div>
-							</div>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							<div className="flex flex-wrap gap-2 border-b pb-3">
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => insertAtCursor("\n## Sous-titre\n\n")}
-								>
-									H2
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => insertAtCursor("\n### Sous-section\n\n")}
-								>
-									H3
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => insertAtCursor("\n- Point 1\n- Point 2\n")}
-								>
-									Liste
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => insertAtCursor("\n```md\nVotre code ici\n```\n")}
-								>
-									<Code2 className="mr-1 h-3.5 w-3.5" />
-									Code
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => insertAtCursor("\n### Passez a l'action\n\nProchaine etape:\n")}
-								>
-									CTA
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									onClick={() => insertAtCursor("\n> Citation\n\n")}
-								>
-									Citation
-								</Button>
-							</div>
-
-							<div className="rounded-md border bg-muted/20 p-3 space-y-2">
-								<div className="flex flex-col gap-2 md:flex-row md:items-center">
-									<Input
-										value={slashInput}
-										onChange={(e) => setSlashInput(e.target.value)}
-										placeholder="Commande rapide (ex: /h2, /list, /code, /quote)"
-										className="bg-white"
-									/>
-									<Button
-										type="button"
-										variant="outline"
-										onClick={() => {
-											if (!slashInput.trim()) return;
-											const ok = applySlashCommand(slashInput.trim().split(/\s+/)[0]);
-											if (!ok) toast.error("Commande slash inconnue");
-										}}
-									>
-										Appliquer /commande
-									</Button>
-								</div>
-								<p className="text-xs text-muted-foreground">Commandes: /h2, /h3, /list, /code, /quote, /cta</p>
-								{commandHint ? <p className="text-xs text-primary">{commandHint}</p> : null}
-							</div>
-
-							{viewMode === "preview" ? (
-								<div className="min-h-100 rounded-md border p-6 bg-white">
-									{description ? (
-										<ReactMarkdown>{description}</ReactMarkdown>
-									) : (
-										<p className="text-muted-foreground">Apercu vide. Ecris du contenu pour le voir ici.</p>
-									)}
-								</div>
-							) : viewMode === "split" ? (
-								<div className="grid gap-3 lg:grid-cols-2">
-									<Textarea
-										ref={descriptionRef}
-										value={description}
-										onChange={(e) => {
-											setIsDirty(true);
-											setDescription(e.target.value);
-										}}
-										onKeyDown={handleEditorKeyDown}
-										rows={18}
-										className="font-mono text-sm bg-neutral-50 shadow-inner"
-										required
-									/>
-									<div className="min-h-100 rounded-md border p-6 bg-white overflow-auto">
-										{description ? (
-											<ReactMarkdown>{description}</ReactMarkdown>
-										) : (
-											<p className="text-muted-foreground">Apercu vide. Ecris du contenu pour le voir ici.</p>
-										)}
-									</div>
-								</div>
-							) : (
+						) : viewMode === "split" ? (
+							<div className="grid gap-3 lg:grid-cols-2">
 								<Textarea
-									id="description"
-									name="description"
 									ref={descriptionRef}
 									value={description}
 									onChange={(e) => {
@@ -635,50 +612,72 @@ export function CourseForm({ course }) {
 										setDescription(e.target.value);
 									}}
 									onKeyDown={handleEditorKeyDown}
-									placeholder="Decris le contenu et les objectifs du cours..."
-									rows={14}
+									rows={5}
 									className="font-mono text-sm bg-neutral-50 shadow-inner"
 									required
 								/>
-							)}
-						</CardContent>
-					</Card>
+								<div className="min-h-100 rounded-md border p-6 bg-white overflow-auto">
+									{description ? (
+										<ReactMarkdown>{description}</ReactMarkdown>
+									) : (
+										<p className="text-muted-foreground">Apercu vide. Ecris du contenu pour le voir ici.</p>
+									)}
+								</div>
+							</div>
+						) : (
+							<Textarea
+								id="description"
+								name="description"
+								ref={descriptionRef}
+								value={description}
+								onChange={(e) => {
+									setIsDirty(true);
+									setDescription(e.target.value);
+								}}
+								onKeyDown={handleEditorKeyDown}
+								placeholder="Decris le contenu et les objectifs du cours..."
+								rows={14}
+								className="font-mono text-sm bg-neutral-100 shadow-inner h-full"
+								required
+							/>
+						)}
+					</CardContent>
+				</Card>
 
-					<div className="flex gap-3">
-						<Button
-							type="button"
-							variant="secondary"
-							onClick={() => {
-								if (!isEdit) {
-									toast.info("Le brouillon est stocke localement automatiquement");
-									return;
-								}
-								const form = document.querySelector("form");
-								if (form) form.requestSubmit();
-							}}
-							disabled={loading || !isDirty}
-						>
-							<Sparkles className="mr-1 h-4 w-4" />
-							Sauvegarder brouillon
-						</Button>
-						<Button
-							type="submit"
-							disabled={loading}
-						>
-							{loading ? "Enregistrement..." : isEdit ? "Mettre à jour" : "Créer le cours"}
-						</Button>
-						<Button
-							type="button"
-							variant="outline"
-							onClick={() => router.push("/admin/courses")}
-						>
-							Annuler
-						</Button>
-					</div>
-				</form>
-			</div>
+				<div className="flex justify-end items-center gap-3">
+					<Button
+						type="button"
+						variant="secondary"
+						onClick={() => {
+							if (!isEdit) {
+								toast.info("Le brouillon est stocke localement automatiquement");
+								return;
+							}
+							const form = document.querySelector("form");
+							if (form) form.requestSubmit();
+						}}
+						disabled={loading || !isDirty}
+					>
+						<Sparkles className="mr-1 h-4 w-4" />
+						Sauvegarder brouillon
+					</Button>
+					<Button
+						type="submit"
+						disabled={loading}
+					>
+						{loading ? "Enregistrement..." : isEdit ? "Mettre à jour" : "Créer le cours"}
+					</Button>
+					<Button
+						type="button"
+						variant="outline"
+						onClick={() => router.push("/admin/courses")}
+					>
+						Annuler
+					</Button>
+				</div>
+			</form>
 
-			<aside className={clsx("space-y-4 xl:sticky xl:top-6 h-fit", isFocusMode && "hidden")}>
+			{/* <aside className={clsx("space-y-4 xl:sticky xl:top-6 h-fit", isFocusMode && "hidden")}>
 				<Card>
 					<CardHeader className="pb-3">
 						<CardTitle className="text-base">Templates de cours</CardTitle>
@@ -769,7 +768,7 @@ export function CourseForm({ course }) {
 						</p>
 					</CardContent>
 				</Card>
-			</aside>
+			</aside> */}
 		</div>
 	);
 }

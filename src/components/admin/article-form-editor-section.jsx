@@ -104,6 +104,12 @@ export function ArticleFormEditorSection({
 	content,
 	onContentChange,
 	onEditorKeyDown,
+	onEditorDragEnter,
+	onEditorDragOver,
+	onEditorDragLeave,
+	onEditorDrop,
+	isEditorDragActive,
+	dropIndicatorTop,
 	onCommandPaletteOpenChange,
 	commandQueryHint,
 	slashInput,
@@ -114,6 +120,25 @@ export function ArticleFormEditorSection({
 	readingMinutes,
 	isCommandPaletteOpen,
 }) {
+	function renderDropIndicator() {
+		if (!isEditorDragActive) return null;
+
+		return (
+			<>
+				<div className="pointer-events-none absolute inset-0 bg-primary/5" />
+				{typeof dropIndicatorTop === "number" ? (
+					<div
+						className="pointer-events-none absolute left-5 right-5 z-10"
+						style={{ top: `${dropIndicatorTop}px` }}
+					>
+						<div className="h-0.5 w-full rounded-full bg-primary" />
+						<span className="absolute -top-5 left-0 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">Insertion image</span>
+					</div>
+				) : null}
+			</>
+		);
+	}
+
 	function renderEditorContextMenu() {
 		return (
 			<ContextMenuContent
@@ -642,7 +667,13 @@ export function ArticleFormEditorSection({
 						<div className="grid gap-3 lg:grid-cols-2">
 							<ContextMenu>
 								<ContextMenuTrigger className="block">
-									<div>
+									<div
+										className="relative"
+										onDragEnter={onEditorDragEnter}
+										onDragOver={onEditorDragOver}
+										onDragLeave={onEditorDragLeave}
+										onDrop={onEditorDrop}
+									>
 										<Textarea
 											ref={textareaRef}
 											value={content}
@@ -657,6 +688,7 @@ export function ArticleFormEditorSection({
 											onContextMenu={onSyncSelectionState}
 											required
 										/>
+										{renderDropIndicator()}
 									</div>
 								</ContextMenuTrigger>
 								{renderEditorContextMenu()}
@@ -668,7 +700,13 @@ export function ArticleFormEditorSection({
 					) : (
 						<ContextMenu>
 							<ContextMenuTrigger className="block">
-								<div>
+								<div
+									className="relative"
+									onDragEnter={onEditorDragEnter}
+									onDragOver={onEditorDragOver}
+									onDragLeave={onEditorDragLeave}
+									onDrop={onEditorDrop}
+								>
 									<Textarea
 										ref={textareaRef}
 										value={content}
@@ -683,6 +721,7 @@ export function ArticleFormEditorSection({
 										onContextMenu={onSyncSelectionState}
 										required
 									/>
+									{renderDropIndicator()}
 								</div>
 							</ContextMenuTrigger>
 							{renderEditorContextMenu()}

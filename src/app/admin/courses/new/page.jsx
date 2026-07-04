@@ -11,7 +11,9 @@ export default async function NewCoursePage() {
 
 	return (
 		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-neutral-100">
-			<CourseForm />
+			<div className="rounded-xl shadow-sm">
+				<CourseForm />
+			</div>
 		</div>
 	);
 }

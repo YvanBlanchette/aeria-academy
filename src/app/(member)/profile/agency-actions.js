@@ -1,10 +1,21 @@
 "use server";
 
+import { existsSync } from "fs";
+import { mkdir, writeFile } from "fs/promises";
+import path from "path";
+import { randomUUID } from "crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { slugify } from "@/lib/slugify";
+import { convertImageFileToWebpBuffer } from "@/lib/server/image-conversion";
+
+const AGENCY_LOGO_IMAGE_CONFIG = {
+	allowedMimes: ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"],
+	maxSourceSize: 20 * 1024 * 1024,
+	webpQuality: 82,
+};
 
 function urlOrEmpty(message) {
 	return z
@@ -211,4 +222,46 @@ export async function leaveAgency() {
 
 	revalidatePath("/profile");
 	return { success: true };
+}
+
+export async function uploadAgencyLogo(formData) {
+	const session = await auth();
+	if (!session) return { error: "Non autorisé" };
+
+	const file = formData.get("file");
+	if (!file || typeof file === "string") {
+		return { error: "Aucun fichier reçu" };
+	}
+
+	if (!AGENCY_LOGO_IMAGE_CONFIG.allowedMimes.includes(file.type)) {
+		return { error: `Format invalide. Reçu : ${file.type}` };
+	}
+
+	if (file.size > AGENCY_LOGO_IMAGE_CONFIG.maxSourceSize) {
+		return { error: "Image trop volumineuse (20 MB max avant conversion)" };
+	}
+
+	const uploadDir = path.join(process.cwd(), "public", "uploads", "agencies", "logos");
+	if (!existsSync(uploadDir)) {
+		await mkdir(uploadDir, { recursive: true });
+	}
+
+	const filename = `${session.user.id}-${randomUUID()}.webp`;
+	const filePath = path.join(uploadDir, filename);
+
+	let webpBuffer;
+	try {
+		webpBuffer = await convertImageFileToWebpBuffer({
+			file,
+			quality: AGENCY_LOGO_IMAGE_CONFIG.webpQuality,
+		});
+	} catch {
+		return { error: "Impossible de convertir l'image en WebP" };
+	}
+
+	await writeFile(filePath, webpBuffer);
+
+	return {
+		url: `/uploads/agencies/logos/${filename}`,
+	};
 }

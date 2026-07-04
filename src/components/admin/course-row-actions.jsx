@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { MoreHorizontal } from "lucide-react";
+import { Eye, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -57,7 +57,10 @@ export function CourseRowActions({ course }) {
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end">
 					<DropdownMenuItem asChild>
-						<Link href={`/admin/courses/${course.id}`}>Modifier</Link>
+						<Link href={`/admin/courses/${course.id}`}>
+							<Eye className="mr-2 h-4 w-4" />
+							Ouvrir
+						</Link>
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={handleTogglePublish}>{course.published ? "Dépublier" : "Publier"}</DropdownMenuItem>
 					<DropdownMenuSeparator />

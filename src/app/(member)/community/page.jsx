@@ -47,6 +47,11 @@ function normalizeQuery(value) {
 	return value.trim();
 }
 
+function normalizePrefill(value) {
+	if (typeof value !== "string") return "";
+	return value.trim().slice(0, 500);
+}
+
 function initialsFromName(name, email) {
 	return (name || email || "U")
 		.split(" ")
@@ -64,6 +69,7 @@ export default async function CommunityPage({ searchParams }) {
 	const resolvedSearchParams = await searchParams;
 	const focusPostId = normalizeFocusPost(resolvedSearchParams?.focusPost);
 	const query = normalizeQuery(resolvedSearchParams?.q);
+	const prefill = normalizePrefill(resolvedSearchParams?.prefill);
 	const postWhere = query
 		? {
 				content: {
@@ -217,8 +223,6 @@ export default async function CommunityPage({ searchParams }) {
 	const totalPages = Math.max(1, Math.ceil(totalPosts / PAGE_SIZE));
 	const hasPrevPage = page > 1;
 	const hasNextPage = page < totalPages;
-	const memberAgency = currentMember?.profile?.agency || null;
-	const canAccessMemberAgencyPage = Boolean(memberAgency?.approved && memberAgency?.slug);
 
 	return (
 		<div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
@@ -229,36 +233,8 @@ export default async function CommunityPage({ searchParams }) {
 							user={currentMember}
 							placeholder="Qu'est-ce que tu veux partager avec la communauté aujourd'hui ?"
 							submitLabel="Publier"
+							initialContent={prefill}
 						/>
-					</CardContent>
-				</Card>
-
-				{/* AGENCY PAGES SHORTCUTS */}
-				<Card className="rounded-3xl border-0 bg-white shadow-sm">
-					<CardContent className="flex flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-6">
-						<div>
-							<p className="text-sm font-medium text-foreground">Pages d'agence</p>
-							<p className="text-xs text-muted-foreground">Retrouvez les pages officielles des agences dans la communauté.</p>
-						</div>
-						<div className="flex flex-wrap items-center gap-2">
-							<Button
-								asChild
-								variant="outline"
-								size="sm"
-								className="rounded-full"
-							>
-								<Link href="/community/agencies">Explorer les pages</Link>
-							</Button>
-							{canAccessMemberAgencyPage ? (
-								<Button
-									asChild
-									size="sm"
-									className="rounded-full"
-								>
-									<Link href={`/community/agencies/${memberAgency.slug}`}>Ma page d'agence</Link>
-								</Button>
-							) : null}
-						</div>
 					</CardContent>
 				</Card>
 

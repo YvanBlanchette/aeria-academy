@@ -24,6 +24,9 @@ export function MarkCompleteButton({ courseId, lessonId, isCompleted, nextLesson
 
 		setOverrideCompleted(Boolean(result?.completed));
 		toast.success(result?.completed ? "Leçon terminée !" : "Leçon marquée comme non terminée.");
+		if (result?.moduleBadgeUnlocked) {
+			toast.success(`Nouveau badge debloque: ${result.moduleBadgeTitle || "Module complete"}`);
+		}
 		setLoading(false);
 
 		// Auto-passage à la leçon suivante seulement lors de la validation

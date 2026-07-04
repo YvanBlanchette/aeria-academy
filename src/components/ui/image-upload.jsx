@@ -40,7 +40,7 @@ export function ImageUpload({ value, onChange, name, label = "Image" }) {
 		<div className="space-y-3">
 			{/* Hidden input pour soumettre l'URL dans le form parent */}
 			{value ? (
-				<div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+				<div className="relative aspect-video w-full overflow-hidden rounded-md border bg-neutral-50 shadow-inner">
 					<Image
 						src={value}
 						alt={label}

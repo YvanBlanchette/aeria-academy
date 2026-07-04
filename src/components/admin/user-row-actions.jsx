@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, Trash2 } from "lucide-react";
+import { MoreHorizontal, Eye, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -42,28 +43,35 @@ export function UserRowActions({ user, isSelf }) {
 
 	return (
 		<>
-			<div className="flex justify-center gap-2">
-				<Button
-					asChild
-					variant="outline"
-					size="sm"
-				>
-					<Link href={`/admin/users/${user.id}`}>
-						<Eye className="mr-1 h-3.5 w-3.5" />
-						Voir
-					</Link>
-				</Button>
-				<Button
-					type="button"
-					variant="destructive"
-					size="sm"
-					onClick={() => setOpen(true)}
-					disabled={isSelf || loading}
-				>
-					<Trash2 className="mr-1 h-3.5 w-3.5" />
-					Supprimer
-				</Button>
-			</div>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="rounded-full"
+					>
+						<MoreHorizontal className="h-4 w-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem asChild>
+						<Link href={`/admin/users/${user.id}`}>
+							<Eye className="mr-2 h-4 w-4" />
+							Voir
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						className="text-destructive focus:text-destructive"
+						onClick={() => setOpen(true)}
+						disabled={isSelf || loading}
+					>
+						<Trash2 className="mr-2 h-4 w-4" />
+						Supprimer
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
 			<AlertDialog
 				open={open}

@@ -39,22 +39,18 @@ export default async function AdminTagsPage({ searchParams }) {
 	const where = q
 		? {
 				OR: [{ name: { contains: q, mode: "insensitive" } }, { slug: { contains: q, mode: "insensitive" } }],
-		  }
+			}
 		: {};
 
 	const orderBy =
-		sort === "name"
-			? [{ name: dir }, { createdAt: "desc" }]
-			: sort === "createdAt"
-				? [{ createdAt: dir }]
-				: [{ articles: { _count: dir } }, { name: "asc" }];
+		sort === "name" ? [{ name: dir }, { createdAt: "desc" }] : sort === "createdAt" ? [{ createdAt: dir }] : [{ articles: { _count: dir } }, { name: "asc" }];
 
 	const [tags, filteredCount, totalCount, usedCount, linkCount] = await Promise.all([
 		prisma.tag.findMany({
 			where,
-		include: {
-			_count: { select: { articles: true } },
-		},
+			include: {
+				_count: { select: { articles: true } },
+			},
 			orderBy,
 			skip: (page - 1) * PAGE_SIZE,
 			take: PAGE_SIZE,
@@ -147,7 +143,7 @@ export default async function AdminTagsPage({ searchParams }) {
 								name="q"
 								defaultValue={q}
 								placeholder="Rechercher un tag"
-								className="h-9 rounded-md border bg-background pl-8 pr-3 text-sm"
+								className="h-9 rounded-md border bg-neutral-100 pl-8 pr-3 text-sm shadow-inner"
 							/>
 							{sort !== "usage" ? (
 								<input
@@ -164,9 +160,7 @@ export default async function AdminTagsPage({ searchParams }) {
 								/>
 							) : null}
 						</form>
-						<div className="text-sm text-muted-foreground">
-							{filteredCount === 0 ? "Aucun résultat" : `${pageStart}-${pageEnd} sur ${filteredCount} tags`}
-						</div>
+						<div className="text-sm text-muted-foreground">{filteredCount === 0 ? "Aucun résultat" : `${pageStart}-${pageEnd} sur ${filteredCount} tags`}</div>
 					</div>
 
 					<div className="overflow-x-auto rounded-md border">
@@ -226,7 +220,7 @@ export default async function AdminTagsPage({ searchParams }) {
 																	backgroundColor: tagItem.color,
 																	color: "#fff",
 																	borderColor: tagItem.color,
-															  }
+																}
 															: undefined
 													}
 												>

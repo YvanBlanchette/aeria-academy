@@ -86,7 +86,7 @@ export function ModuleManager({ course }) {
 	}
 
 	return (
-		<Card className="h-full w-full shadow-xl overflow-y-auto rounded-sm">
+		<Card className="h-full w-full verflow-y-auto rounded-sm shadow-sm">
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<div>
@@ -147,7 +147,7 @@ export function ModuleManager({ course }) {
 							return (
 								<li
 									key={m.id}
-									className="flex items-center gap-2 rounded-md border p-3"
+									className="flex items-center gap-2 rounded-md border p-3 shadow-sm"
 								>
 									<div className="flex flex-col">
 										<Button

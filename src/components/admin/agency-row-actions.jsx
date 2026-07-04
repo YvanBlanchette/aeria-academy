@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { Check, MoreHorizontal, Trash2 } from "lucide-react";
+import { Check, Eye, MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
 	AlertDialog,
@@ -72,7 +72,10 @@ export function AgencyRowActions({ agency }) {
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="end">
 						<DropdownMenuItem asChild>
-							<Link href={`/admin/agencies/${agency.id}`}>Ouvrir la fiche</Link>
+							<Link href={`/admin/agencies/${agency.id}`}>
+								<Eye className="mr-2 h-4 w-4" />
+								Ouvrir la fiche
+							</Link>
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={() => setConfirmOpen(true)}

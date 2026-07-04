@@ -108,6 +108,14 @@ export default function LoginPage() {
 									className="bg-neutral-100 shadow-inner"
 									placeholder="Mot de passe"
 								/>
+								<div className="text-right">
+									<Link
+										href="/forgot-password"
+										className="text-xs text-primary hover:underline"
+									>
+										Mot de passe oublie ?
+									</Link>
+								</div>
 							</div>
 
 							<Button

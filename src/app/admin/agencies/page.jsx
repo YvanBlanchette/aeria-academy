@@ -74,7 +74,7 @@ export default async function AdminAgenciesPage({ searchParams }) {
 					<Link
 						href={hrefWith({ status: "all" })}
 						className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-							status === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+							status === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 						}`}
 					>
 						Toutes
@@ -82,7 +82,7 @@ export default async function AdminAgenciesPage({ searchParams }) {
 					<Link
 						href={hrefWith({ status: "pending" })}
 						className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-							status === "pending" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+							status === "pending" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 						}`}
 					>
 						En attente
@@ -98,7 +98,7 @@ export default async function AdminAgenciesPage({ searchParams }) {
 					<Link
 						href={hrefWith({ status: "approved" })}
 						className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-							status === "approved" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+							status === "approved" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 						}`}
 					>
 						Approuvées
@@ -115,7 +115,7 @@ export default async function AdminAgenciesPage({ searchParams }) {
 							name="q"
 							defaultValue={q}
 							placeholder="Rechercher une agence"
-							className="h-9 rounded-md border bg-background pl-8 pr-3 text-sm"
+							className="h-9 rounded-md border pl-8 pr-3 text-sm shadow-inner bg-neutral-100"
 						/>
 						{status !== "all" ? (
 							<input

@@ -35,7 +35,7 @@ export default async function EditCoursePage({ params }) {
 
 	return (
 		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-neutral-100">
-			<div className="flex justify-between gap-8 h-full">
+			<div className="flex justify-between gap-8 h-full rounded-xl shadow-sm">
 				<CourseForm course={course} />
 
 				<ModuleManager course={course} />

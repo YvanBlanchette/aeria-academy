@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -16,8 +17,7 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { deleteArticleInline, duplicateArticleInline, togglePublishArticle } from "@/app/admin/articles/actions";
-import { FaEdit, FaEye, FaFileDownload, FaFileUpload, FaRegCopy, FaTrash } from "react-icons/fa";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { MoreHorizontal, PencilLine, Eye, Copy, Upload, Download, Trash2 } from "lucide-react";
 
 export function ArticleRowActions({ article }) {
 	const router = useRouter();
@@ -71,103 +71,54 @@ export function ArticleRowActions({ article }) {
 
 	return (
 		<>
-			<div className="flex items-center justify-center gap-2">
-				{/* --- EDIT BUTTON --- */}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Link
-							href={`/admin/articles/${article.id}`}
-							className="rounded px-2 py-1 group"
-						>
-							<FaEdit className="mr-1 inline h-5 w-5 group-hover:text-neutral-900 text-neutral-500 transition-all" />
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon"
+						className="rounded-full"
+					>
+						<MoreHorizontal className="h-4 w-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem asChild>
+						<Link href={`/admin/articles/${article.id}`}>
+							<PencilLine className="mr-2 h-4 w-4" />
+							Modifier
 						</Link>
-					</TooltipTrigger>
-					<TooltipContent side={"bottom"}>
-						<p>Éditer l&apos;article</p>
-					</TooltipContent>
-				</Tooltip>
-
-				{/* --- VIEW BUTTON --- */}
-				{article.published ? (
-					<Tooltip>
-						<TooltipTrigger asChild>
+					</DropdownMenuItem>
+					{article.published ? (
+						<DropdownMenuItem asChild>
 							<a
 								href={`/resources/${article.slug}`}
 								target="_blank"
 								rel="noopener noreferrer"
-								className="rounded px-2 py-1 group"
 							>
-								<FaEye className="mr-1 inline h-5 w-5 group-hover:text-neutral-900 text-neutral-500 transition-all" />
+								<Eye className="mr-2 h-4 w-4" />
+								Voir
 							</a>
-						</TooltipTrigger>
-						<TooltipContent side={"bottom"}>
-							<p>Voir l&apos;article</p>
-						</TooltipContent>
-					</Tooltip>
-				) : null}
-
-				{/* --- DUPLICATE BUTTON --- */}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							onClick={handleDuplicate}
-							disabled={loading}
-							className="group"
-						>
-							<FaRegCopy className="mr-1 inline h-6 w-6 group-hover:text-neutral-900 text-neutral-500 transition-all" />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side={"bottom"}>
-						<p>Dupliquer l&apos;article</p>
-					</TooltipContent>
-				</Tooltip>
-
-				{/* --- PUBLISH/UNPUBLISH BUTTON --- */}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							onClick={handleToggle}
-							disabled={loading}
-							className="group"
-						>
-							{article.published ? (
-								<>
-									<FaFileDownload className="mr-1 inline h-8 w-8 group-hover:text-neutral-900 text-neutral-500 transition-all" />
-								</>
-							) : (
-								<>
-									<FaFileUpload className="mr-1 inline h-8 w-8 group-hover:text-neutral-900 text-neutral-500 transition-all" />
-								</>
-							)}
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side={"bottom"}>
-						<p>{article.published ? "Dépublier" : "Publier"} l&apos;article</p>
-					</TooltipContent>
-				</Tooltip>
-
-				{/* --- DELETE BUTTON --- */}
-				<Tooltip>
-					<TooltipTrigger asChild>
-						<Button
-							type="button"
-							variant="ghost"
-							onClick={() => setOpen(true)}
-							disabled={loading}
-							className="group"
-						>
-							<FaTrash className="mr-1 inline h-5 w-5 group-hover:text-red-600 text-neutral-500 transition-all" />
-						</Button>
-					</TooltipTrigger>
-					<TooltipContent side={"bottom"}>
-						<p>Supprimer l&apos;article</p>
-					</TooltipContent>
-				</Tooltip>
-			</div>
+						</DropdownMenuItem>
+					) : null}
+					<DropdownMenuItem onClick={handleDuplicate}>
+						<Copy className="mr-2 h-4 w-4" />
+						Dupliquer
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleToggle}>
+						{article.published ? <Download className="mr-2 h-4 w-4" /> : <Upload className="mr-2 h-4 w-4" />}
+						{article.published ? "Dépublier" : "Publier"}
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						className="text-destructive focus:text-destructive"
+						onClick={() => setOpen(true)}
+					>
+						<Trash2 className="mr-2 h-4 w-4" />
+						Supprimer
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
 			<AlertDialog
 				open={open}

@@ -27,7 +27,18 @@ export default async function ModulePage({ params }) {
 	return (
 		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-neutral-100">
 			<div className="space-y-8">
-				<Card>
+				{/* MODULE TOPBAR */}
+				<div>
+					<Link
+						href={`/admin/courses/${courseId}`}
+						className="text-sm text-muted-foreground hover:underline"
+					>
+						← Retour au cours: {mod.course.title}
+					</Link>
+					<h1 className="mt-2 text-2xl font-bold">{mod.title}</h1>
+				</div>
+
+				<Card className="shadow-sm">
 					<CardHeader>
 						<div className="flex items-center justify-between">
 							<div>

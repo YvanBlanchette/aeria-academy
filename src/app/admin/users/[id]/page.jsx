@@ -176,11 +176,11 @@ export default async function UserDetailPage({ params }) {
 		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-neutral-100">
 			<div className="flex items-center justify-end mb-2">
 				<Link href={metadata.btnLink}>
-					<Button className="rounded-sm">Retour aux Membres</Button>
+					<Button className="rounded-sm shadow-sm active:shadow-inner">Retour aux Membres</Button>
 				</Link>
 			</div>
 			<div className="space-y-8">
-				<Card>
+				<Card className="shadow-sm">
 					<CardContent className="p-6">
 						<div className="flex items-center gap-4">
 							<Avatar className="h-14 w-14">
@@ -202,7 +202,7 @@ export default async function UserDetailPage({ params }) {
 
 				{/* Stats rapides */}
 				<div className="grid gap-4 md:grid-cols-3">
-					<Card>
+					<Card className="shadow-sm">
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between">
 								<div>
@@ -213,7 +213,7 @@ export default async function UserDetailPage({ params }) {
 							</div>
 						</CardContent>
 					</Card>
-					<Card>
+					<Card className="shadow-sm">
 						<CardContent className="p-6">
 							<div>
 								<p className="text-sm text-muted-foreground">Quiz passés</p>
@@ -221,7 +221,7 @@ export default async function UserDetailPage({ params }) {
 							</div>
 						</CardContent>
 					</Card>
-					<Card>
+					<Card className="shadow-sm">
 						<CardContent className="p-6">
 							<div>
 								<p className="text-sm text-muted-foreground">Certificats</p>
@@ -238,7 +238,7 @@ export default async function UserDetailPage({ params }) {
 							currentUserId={session.user.id}
 						/>
 
-						<Card className="mt-6">
+						<Card className="mt-6 shadow-sm">
 							<CardHeader>
 								<CardTitle className="text-base">Timeline d&apos;activité</CardTitle>
 							</CardHeader>
@@ -252,7 +252,7 @@ export default async function UserDetailPage({ params }) {
 											return (
 												<li
 													key={entry.key}
-													className="rounded-md border bg-background p-3"
+													className="rounded-md border bg-background p-3 shadow-inner"
 												>
 													<div className="flex items-start gap-3">
 														<Icon className="mt-0.5 h-4 w-4 text-muted-foreground" />
@@ -283,7 +283,7 @@ export default async function UserDetailPage({ params }) {
 					</div>
 
 					<div className="space-y-4">
-						<Card>
+						<Card className="shadow-sm">
 							<CardHeader>
 								<CardTitle className="text-base">Actions rapides</CardTitle>
 							</CardHeader>
@@ -295,7 +295,7 @@ export default async function UserDetailPage({ params }) {
 							</CardContent>
 						</Card>
 
-						<Card>
+						<Card className="shadow-sm">
 							<CardHeader>
 								<CardTitle className="text-base">Generateur de certificat</CardTitle>
 							</CardHeader>
@@ -307,7 +307,7 @@ export default async function UserDetailPage({ params }) {
 							</CardContent>
 						</Card>
 
-						<Card>
+						<Card className="shadow-sm">
 							<CardHeader>
 								<CardTitle className="text-base">Compte</CardTitle>
 							</CardHeader>
@@ -349,7 +349,7 @@ export default async function UserDetailPage({ params }) {
 							</CardContent>
 						</Card>
 
-						<Card>
+						<Card className="shadow-sm">
 							<CardHeader>
 								<CardTitle className="text-base">Cours suivis ({user.enrollments.length})</CardTitle>
 							</CardHeader>

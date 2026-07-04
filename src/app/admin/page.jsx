@@ -302,26 +302,32 @@ export default async function AdminDashboard() {
 	}
 
 	return (
-		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-neutral-100">
-			<div className="rounded-xl border bg-white p-5 shadow-sm">
+		<div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto bg-linear-to-br from-neutral-100 via-neutral-100 to-neutral-200/60">
+			{/* DASHBOARD HERO */}
+			<div className="rounded-xl border border-neutral-200 bg-white p-5 shadow-sm">
 				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 					<div>
 						<h1 className="text-2xl font-semibold">Dashboard Admin</h1>
 						<p className="text-sm text-muted-foreground">Cockpit global de l&apos;académie: croissance, contenu, membres et opérations.</p>
 					</div>
 					<div className="flex flex-wrap gap-2">
-						<Button asChild>
+						<Button
+							asChild
+							className="shadow-sm active:shadow-inner"
+						>
 							<Link href="/admin/courses/new">Créer un cours</Link>
 						</Button>
 						<Button
 							variant="outline"
 							asChild
+							className="shadow-sm active:shadow-inner"
 						>
 							<Link href="/admin/articles/new">Nouvel article</Link>
 						</Button>
 						<Button
 							variant="outline"
 							asChild
+							className="shadow-sm active:shadow-inner"
 						>
 							<Link href="/admin/settings">
 								<Settings2 className="mr-2 h-4 w-4" />
@@ -336,7 +342,7 @@ export default async function AdminDashboard() {
 				{kpis.map(({ label, value, detail, icon: Icon }) => (
 					<Card
 						key={label}
-						className="shadow-sm"
+						className="shadow-sm border-neutral-200 bg-white/95"
 					>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
@@ -352,17 +358,17 @@ export default async function AdminDashboard() {
 
 			<div className="grid gap-6 xl:grid-cols-[1.35fr_1fr]">
 				<div className="space-y-6">
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<Activity className="h-5 w-5" />
 								Tendances 14 jours
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="grid gap-6 lg:grid-cols-2">
+						<CardContent className="grid gap-6 lg:grid-cols-2 bg-neutral-50/60">
 							<div>
 								<p className="mb-3 text-sm font-medium">Inscriptions</p>
-								<div className="flex h-28 items-end gap-1 rounded-md border bg-white p-2">
+								<div className="flex h-28 items-end gap-1 rounded-md border bg-white p-2 shadow-inner">
 									{enrollmentTrend.map((point) => (
 										<div
 											key={point.day}
@@ -380,7 +386,7 @@ export default async function AdminDashboard() {
 							</div>
 							<div>
 								<p className="mb-3 text-sm font-medium">Messages support</p>
-								<div className="flex h-28 items-end gap-1 rounded-md border bg-white p-2">
+								<div className="flex h-28 items-end gap-1 rounded-md border bg-white p-2 shadow-inner">
 									{messageTrend.map((point) => (
 										<div
 											key={point.day}
@@ -399,11 +405,11 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle>Activité récente</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-5">
+						<CardContent className="space-y-5 bg-neutral-50/40">
 							<div>
 								<div className="mb-2 flex items-center justify-between">
 									<p className="text-sm font-medium">Nouveaux utilisateurs</p>
@@ -411,6 +417,7 @@ export default async function AdminDashboard() {
 										variant="ghost"
 										size="sm"
 										asChild
+										className="shadow-sm active:shadow-inner"
 									>
 										<Link href="/admin/users">
 											Voir tout <ArrowRight className="ml-1 h-4 w-4" />
@@ -421,7 +428,7 @@ export default async function AdminDashboard() {
 									{recentUsers.map((user) => (
 										<div
 											key={user.id}
-											className="flex items-center justify-between rounded-md border bg-white px-3 py-2"
+											className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-sm"
 										>
 											<div>
 												<p className="text-sm font-medium">{user.name || user.email}</p>
@@ -443,6 +450,7 @@ export default async function AdminDashboard() {
 										variant="ghost"
 										size="sm"
 										asChild
+										className="shadow-sm active:shadow-inner"
 									>
 										<Link href="/admin/courses">
 											Cours <ArrowRight className="ml-1 h-4 w-4" />
@@ -453,7 +461,7 @@ export default async function AdminDashboard() {
 									{recentEnrollments.map((enrollment) => (
 										<div
 											key={enrollment.id}
-											className="flex items-center justify-between rounded-md border bg-white px-3 py-2"
+											className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-sm"
 										>
 											<div>
 												<p className="text-sm font-medium">{enrollment.user?.name || enrollment.user?.email}</p>
@@ -470,11 +478,11 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle>Performance contenu</CardTitle>
 						</CardHeader>
-						<CardContent className="grid gap-6 lg:grid-cols-2">
+						<CardContent className="grid gap-6 lg:grid-cols-2 bg-neutral-50/40">
 							<div>
 								<p className="mb-2 text-sm font-medium">Top cours (inscriptions)</p>
 								<div className="space-y-2">
@@ -485,7 +493,7 @@ export default async function AdminDashboard() {
 											<Link
 												key={course.courseId}
 												href={`/admin/courses/${course.courseId}`}
-												className="flex items-center justify-between rounded-md border bg-white px-3 py-2 hover:bg-muted/40"
+												className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-sm hover:bg-muted/40"
 											>
 												<div className="min-w-0">
 													<p className="truncate text-sm font-medium">{course.title}</p>
@@ -506,7 +514,7 @@ export default async function AdminDashboard() {
 										topAuthors.map((author) => (
 											<div
 												key={author.authorId}
-												className="flex items-center justify-between rounded-md border bg-white px-3 py-2"
+												className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-sm"
 											>
 												<div className="min-w-0">
 													<p className="truncate text-sm font-medium">{author.name}</p>
@@ -523,27 +531,27 @@ export default async function AdminDashboard() {
 				</div>
 
 				<div className="space-y-6">
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<Server className="h-5 w-5" />
 								Statut infrastructure
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-2">
-							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+						<CardContent className="space-y-2 bg-neutral-50/30">
+							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-inner">
 								<p className="text-sm">Base de données</p>
 								<Badge variant={dbHealthy ? "default" : "destructive"}>{dbHealthy ? "OK" : "Erreur"}</Badge>
 							</div>
-							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-inner">
 								<p className="text-sm">Connectivité</p>
 								<p className="text-sm font-medium">Probe SQL exécuté</p>
 							</div>
-							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-inner">
 								<p className="text-sm">Mode maintenance</p>
 								<Badge variant={maintenanceMode ? "destructive" : "secondary"}>{maintenanceMode ? "Actif" : "Inactif"}</Badge>
 							</div>
-							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2">
+							<div className="flex items-center justify-between rounded-md border bg-white px-3 py-2 shadow-inner">
 								<p className="text-sm">Couverture contenu</p>
 								<p className="text-sm font-medium">
 									{modulesCount} modules • {lessonsCount} leçons
@@ -552,7 +560,7 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<AlertTriangle className="h-5 w-5 text-amber-500" />
@@ -577,21 +585,21 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<Mail className="h-5 w-5" />
 								File support récente
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-2">
+						<CardContent className="space-y-2 bg-neutral-50/30">
 							{recentContactMessages.length === 0 ? (
 								<p className="text-sm text-muted-foreground">Aucun message récent.</p>
 							) : (
 								recentContactMessages.map((message) => (
 									<div
 										key={message.id}
-										className="rounded-md border bg-white px-3 py-2"
+										className="rounded-md border bg-white px-3 py-2 shadow-inner"
 									>
 										<div className="flex items-center justify-between gap-2">
 											<p className="truncate text-sm font-medium">{message.fullName}</p>
@@ -607,19 +615,19 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<FileText className="h-5 w-5" />
 								Articles récents
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-2">
+						<CardContent className="space-y-2 bg-neutral-50/30">
 							{recentArticles.map((article) => (
 								<Link
 									key={article.id}
 									href={`/admin/articles/${article.id}`}
-									className="block rounded-md border bg-white px-3 py-2 hover:bg-muted/40"
+									className="block rounded-md border bg-white px-3 py-2 shadow-inner hover:bg-muted/40"
 								>
 									<div className="flex items-center justify-between gap-2">
 										<p className="truncate text-sm font-medium">{article.title}</p>
@@ -633,21 +641,21 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<ShieldCheck className="h-5 w-5" />
 								Audit paramètres
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="space-y-2">
+						<CardContent className="space-y-2 bg-neutral-50/30">
 							{recentSettingsAudit.length === 0 ? (
 								<p className="text-sm text-muted-foreground">Aucun événement audit enregistré.</p>
 							) : (
 								recentSettingsAudit.map((event) => (
 									<div
 										key={event.id}
-										className="rounded-md border bg-white px-3 py-2"
+										className="rounded-md border bg-white px-3 py-2 shadow-inner"
 									>
 										<div className="flex items-center justify-between gap-2">
 											<Badge variant="outline">{event.action}</Badge>
@@ -659,7 +667,7 @@ export default async function AdminDashboard() {
 							)}
 							<Button
 								variant="outline"
-								className="w-full"
+								className="w-full shadow-sm active:shadow-inner"
 								asChild
 							>
 								<Link href="/admin/settings">Ouvrir les paramètres avancés</Link>
@@ -667,33 +675,36 @@ export default async function AdminDashboard() {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm border-neutral-200">
 						<CardHeader>
 							<CardTitle className="flex items-center gap-2">
 								<UserPlus className="h-5 w-5" />
 								Raccourcis
 							</CardTitle>
 						</CardHeader>
-						<CardContent className="grid grid-cols-1 gap-2">
+						<CardContent className="grid grid-cols-1 gap-2 bg-neutral-50/30">
 							<Button
 								variant="outline"
+								className="shadow-sm active:shadow-inner"
 								asChild
 							>
 								<Link href="/admin/users/new">Créer un membre</Link>
 							</Button>
 							<Button
 								variant="outline"
+								className="shadow-sm active:shadow-inner"
 								asChild
 							>
 								<Link href="/admin/agencies/new">Créer une agence</Link>
 							</Button>
 							<Button
 								variant="outline"
+								className="shadow-sm active:shadow-inner"
 								asChild
 							>
 								<Link href="/admin/articles/tags">Gérer les tags d&apos;articles</Link>
 							</Button>
-							<div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+							<div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground shadow-inner">
 								Certificats émis: <span className="font-semibold text-foreground">{certificatesCount}</span>
 							</div>
 						</CardContent>

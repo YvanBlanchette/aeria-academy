@@ -46,7 +46,7 @@ export function AdminUsersInfiniteTable({ initialData, queryString, storageKey, 
 				</p>
 			</div>
 
-			<div className="overflow-hidden rounded-lg border bg-white">
+			<div className="overflow-hidden rounded-lg border bg-white shadow-sm">
 				<Table>
 					<TableHeader className="bg-[#171717] text-white hover:pointer-events-none hover:bg-[#171717]">
 						<TableRow>

@@ -5,12 +5,14 @@ import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { auth } from "@/auth";
+import { convertImageFileToWebpBuffer } from "@/lib/server/image-conversion";
 
 const ALLOWED_TYPES = {
 	image: {
 		mimes: ["image/jpeg", "image/png", "image/webp", "image/gif"],
-		maxSize: 5 * 1024 * 1024,
+		maxSize: 20 * 1024 * 1024,
 		subdir: "images",
+		webpQuality: 82,
 	},
 	audio: {
 		mimes: ["audio/mpeg", "audio/mp4", "audio/wav", "audio/ogg", "audio/webm", "audio/opus"],
@@ -46,6 +48,9 @@ export async function uploadArticleMedia(formData) {
 
 	if (file.size > config.maxSize) {
 		const maxMb = Math.round(config.maxSize / 1024 / 1024);
+		if (kind === "image") {
+			return { error: `Image trop volumineuse (${maxMb} MB max avant conversion)` };
+		}
 		return { error: `Fichier trop volumineux (${maxMb} MB max)` };
 	}
 
@@ -54,12 +59,26 @@ export async function uploadArticleMedia(formData) {
 		await mkdir(uploadDir, { recursive: true });
 	}
 
-	const ext = path.extname(file.name) || "";
+	const ext = kind === "image" ? ".webp" : path.extname(file.name) || "";
 	const filename = `${randomUUID()}${ext}`;
 	const filepath = path.join(uploadDir, filename);
 
-	const bytes = await file.arrayBuffer();
-	await writeFile(filepath, Buffer.from(bytes));
+	let outputBuffer;
+	if (kind === "image") {
+		try {
+			outputBuffer = await convertImageFileToWebpBuffer({
+				file,
+				quality: config.webpQuality,
+			});
+		} catch {
+			return { error: "Impossible de convertir l'image en WebP" };
+		}
+	} else {
+		const bytes = await file.arrayBuffer();
+		outputBuffer = Buffer.from(bytes);
+	}
+
+	await writeFile(filepath, outputBuffer);
 
 	return {
 		url: `/uploads/articles/${config.subdir}/${filename}`,

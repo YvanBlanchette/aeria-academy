@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { ListChecks, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import {
 import { createOrUpdateQuiz, deleteQuiz } from "@/app/admin/courses/[id]/modules/[moduleId]/actions";
 
 export function QuizSection({ courseId, moduleId, quiz }) {
+	const router = useRouter();
 	const [deleting, setDeleting] = useState(false);
 
 	async function handleCreate() {
@@ -27,18 +29,24 @@ export function QuizSection({ courseId, moduleId, quiz }) {
 		fd.set("passingScore", "70");
 		const result = await createOrUpdateQuiz(courseId, moduleId, fd);
 		if (result?.error) toast.error(result.error);
-		else toast.success("Quiz créé");
+		else {
+			toast.success("Quiz créé");
+			router.refresh();
+		}
 	}
 
 	async function handleDelete() {
 		const result = await deleteQuiz(courseId, moduleId);
 		if (result?.error) toast.error(result.error);
-		else toast.success("Quiz supprimé");
+		else {
+			toast.success("Quiz supprimé");
+			router.refresh();
+		}
 		setDeleting(false);
 	}
 
 	return (
-		<Card>
+		<Card className="shadow-sm">
 			<CardHeader>
 				<div className="flex items-center justify-between">
 					<div>
@@ -52,9 +60,9 @@ export function QuizSection({ courseId, moduleId, quiz }) {
 			</CardHeader>
 			<CardContent>
 				{!quiz ? (
-					<p className="py-8 text-center text-sm text-muted-foreground">Aucun quiz attaché à ce module</p>
+					<p className="py-8 text-center text-sm text-muted-foreground shadow-sm">Aucun quiz attaché à ce module</p>
 				) : (
-					<div className="flex items-center justify-between rounded-md border p-4">
+					<div className="flex items-center justify-between rounded-md border p-4 shadow-sm">
 						<div>
 							<p className="font-medium">{quiz.title}</p>
 							<p className="text-sm text-muted-foreground">

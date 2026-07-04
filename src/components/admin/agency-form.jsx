@@ -1,25 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { adminCreateAgency, adminUpdateAgency } from "@/app/admin/agencies/actions";
+import { adminCreateAgency, adminUpdateAgency, adminUploadAgencyLogo } from "@/app/admin/agencies/actions";
 
 export function AgencyForm({ agency }) {
 	const router = useRouter();
+	const fileInputRef = useRef(null);
 	const [loading, setLoading] = useState(false);
+	const [uploadingLogo, setUploadingLogo] = useState(false);
+	const [logoUrl, setLogoUrl] = useState(agency?.logoUrl || "");
 	const isEdit = !!agency;
+
+	async function handleLogoChange(event) {
+		const file = event.target.files?.[0];
+		if (!file) return;
+
+		setUploadingLogo(true);
+		try {
+			const formData = new FormData();
+			formData.set("file", file);
+			const result = await adminUploadAgencyLogo(formData);
+
+			if (result?.error) {
+				toast.error(result.error);
+				return;
+			}
+
+			setLogoUrl(result.url || "");
+			toast.success("Logo uploadé");
+		} catch {
+			toast.error("Impossible d'uploader le logo pour le moment");
+		} finally {
+			setUploadingLogo(false);
+		}
+	}
+
+	function clearLogo() {
+		setLogoUrl("");
+		if (fileInputRef.current) {
+			fileInputRef.current.value = "";
+		}
+	}
 
 	async function handleSubmit(e) {
 		e.preventDefault();
 		setLoading(true);
 
 		const formData = new FormData(e.currentTarget);
+		formData.set("logoUrl", logoUrl);
 		const result = isEdit ? await adminUpdateAgency(agency.id, formData) : await adminCreateAgency(formData);
 
 		if (result?.error) {
@@ -58,13 +94,54 @@ export function AgencyForm({ agency }) {
 					</div>
 
 					<div className="space-y-2">
-						<Label htmlFor="logoUrl">URL du logo</Label>
-						<Input
-							id="logoUrl"
+						{/* AGENCY LOGO UPLOAD */}
+						<Label>Logo</Label>
+						<input
+							type="hidden"
 							name="logoUrl"
-							defaultValue={agency?.logoUrl || ""}
-							placeholder="https://..."
+							value={logoUrl}
 						/>
+						<div className="flex flex-wrap items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => fileInputRef.current?.click()}
+								disabled={uploadingLogo || loading}
+							>
+								{uploadingLogo ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+								Uploader un logo
+							</Button>
+							{logoUrl ? (
+								<Button
+									type="button"
+									variant="ghost"
+									onClick={clearLogo}
+									disabled={uploadingLogo || loading}
+								>
+									<X className="mr-2 h-4 w-4" />
+									Retirer
+								</Button>
+							) : null}
+						</div>
+						<input
+							ref={fileInputRef}
+							type="file"
+							accept="image/png,image/jpeg,image/webp,image/avif,image/gif"
+							onChange={handleLogoChange}
+							disabled={uploadingLogo || loading}
+							className="hidden"
+						/>
+						{logoUrl ? (
+							<div className="overflow-hidden rounded-xl border bg-muted/20">
+								{/* eslint-disable-next-line @next/next/no-img-element */}
+								<img
+									src={logoUrl}
+									alt="Aperçu du logo"
+									className="h-24 w-24 object-cover"
+								/>
+							</div>
+						) : null}
+						<p className="text-xs text-muted-foreground">Images converties automatiquement en WebP.</p>
 					</div>
 
 					<div className="space-y-2">

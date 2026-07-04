@@ -74,7 +74,7 @@ export default async function CoursesListPage({ searchParams }) {
 						<Link
 							href={hrefWith({ status: "all" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								status === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 							}`}
 						>
 							Tous
@@ -82,7 +82,7 @@ export default async function CoursesListPage({ searchParams }) {
 						<Link
 							href={hrefWith({ status: "draft" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "draft" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								status === "draft" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 							}`}
 						>
 							Brouillons
@@ -90,7 +90,7 @@ export default async function CoursesListPage({ searchParams }) {
 						<Link
 							href={hrefWith({ status: "published" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "published" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								status === "published" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 							}`}
 						>
 							Publiés
@@ -99,7 +99,7 @@ export default async function CoursesListPage({ searchParams }) {
 						<Link
 							href={hrefWith({ pricing: "free" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								pricing === "free" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								pricing === "free" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 							}`}
 						>
 							Gratuits
@@ -107,7 +107,7 @@ export default async function CoursesListPage({ searchParams }) {
 						<Link
 							href={hrefWith({ pricing: "paid" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								pricing === "paid" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								pricing === "paid" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70 shadow-inner"
 							}`}
 						>
 							Payants
@@ -117,7 +117,7 @@ export default async function CoursesListPage({ searchParams }) {
 					<div className="flex items-center gap-2">
 						<form
 							action="/admin/courses"
-							className="relative"
+							className="relative "
 						>
 							<Search className="pointer-events-none absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
 							<input
@@ -125,13 +125,14 @@ export default async function CoursesListPage({ searchParams }) {
 								name="q"
 								defaultValue={q}
 								placeholder="Rechercher un cours"
-								className="h-9 rounded-md border bg-background pl-8 pr-3 text-sm"
+								className="h-9 rounded-md border pl-8 pr-3 text-sm bg-neutral-100 shadow-inner"
 							/>
 							{status !== "all" ? (
 								<input
 									type="hidden"
 									name="status"
 									value={status}
+									className="bg-neutral-100 shadow-inner"
 								/>
 							) : null}
 							{pricing !== "all" ? (
@@ -139,6 +140,7 @@ export default async function CoursesListPage({ searchParams }) {
 									type="hidden"
 									name="pricing"
 									value={pricing}
+									className="bg-neutral-100 shadow-inner"
 								/>
 							) : null}
 						</form>
@@ -152,7 +154,7 @@ export default async function CoursesListPage({ searchParams }) {
 				</div>
 
 				{initialData.items.length === 0 ? (
-					<div className="rounded-lg border border-dashed p-12 text-center">
+					<div className="rounded-lg border border-dashed p-12 text-center bg-white shadow-sm">
 						<p className="text-muted-foreground">Aucun cours pour le moment</p>
 						<Button
 							asChild

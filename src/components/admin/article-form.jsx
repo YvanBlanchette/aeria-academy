@@ -76,6 +76,8 @@ export function ArticleForm({ article, allTags = [] }) {
 	const [historyFuture, setHistoryFuture] = useState(Array.isArray(initialDraft?.historyFuture) ? initialDraft.historyFuture.slice(0, HISTORY_LIMIT) : []);
 	const [slashInput, setSlashInput] = useState("");
 	const [commandHint, setCommandHint] = useState("");
+	const [isEditorDragActive, setIsEditorDragActive] = useState(false);
+	const [dropIndicatorTop, setDropIndicatorTop] = useState(null);
 	const [contextualQuickInsertSuggestions, setContextualQuickInsertSuggestions] = useState([
 		{
 			key: "calloutSuccess",
@@ -92,6 +94,7 @@ export function ArticleForm({ article, allTags = [] }) {
 	const textareaRef = useRef(null);
 	const checkpointRef = useRef(content);
 	const savedSelectionRef = useRef({ start: 0, end: 0 });
+	const dragDepthRef = useRef(0);
 	const selectedTagObjects = allTags.filter((tag) => selectedTagIds.includes(tag.id));
 	const hierarchicalTagNames = selectedTagObjects
 		.map((tag) => tag.name)
@@ -220,6 +223,157 @@ export function ArticleForm({ article, allTags = [] }) {
 			ta.setSelectionRange(start + text.length, start + text.length);
 			savedSelectionRef.current = { start: start + text.length, end: start + text.length };
 		}, 0);
+	}
+
+	function insertAtIndex(index, text) {
+		const ta = textareaRef.current;
+		const safeIndex = Math.max(0, Math.min(content.length, Number(index) || 0));
+		setHistoryPast((prev) => [...prev.slice(-(HISTORY_LIMIT - 1)), content]);
+		setHistoryFuture([]);
+		const newContent = content.slice(0, safeIndex) + text + content.slice(safeIndex);
+		setIsDirty(true);
+		setContent(newContent);
+		setTimeout(() => {
+			if (!ta) return;
+			ta.focus();
+			const cursor = safeIndex + text.length;
+			ta.setSelectionRange(cursor, cursor);
+			savedSelectionRef.current = { start: cursor, end: cursor };
+		}, 0);
+	}
+
+	function getDraggedImageFile(dataTransfer) {
+		if (!dataTransfer) return null;
+		if (dataTransfer.files?.length) {
+			return Array.from(dataTransfer.files).find((file) => file.type?.startsWith("image/")) || null;
+		}
+		if (dataTransfer.items?.length) {
+			const imageItem = Array.from(dataTransfer.items).find((item) => item.kind === "file" && item.type?.startsWith("image/"));
+			return imageItem?.getAsFile?.() || null;
+		}
+		return null;
+	}
+
+	function estimateDropPlacement(event) {
+		const ta = textareaRef.current;
+		if (!ta) {
+			return { index: content.length, indicatorTop: null };
+		}
+
+		const styles = window.getComputedStyle(ta);
+		const rect = ta.getBoundingClientRect();
+		const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+		const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
+		const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+		const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
+		const lineHeight = Number.parseFloat(styles.lineHeight) || 20;
+		const fontSize = Number.parseFloat(styles.fontSize) || 16;
+		const fontFamily = styles.fontFamily || "monospace";
+
+		const usableWidth = Math.max(1, ta.clientWidth - paddingLeft - paddingRight);
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
+		if (ctx) {
+			ctx.font = `${styles.fontStyle} ${styles.fontVariant} ${styles.fontWeight} ${fontSize}px ${fontFamily}`;
+		}
+		const charWidth = Math.max(7, ctx?.measureText("M").width || fontSize * 0.6);
+		const charsPerVisualLine = Math.max(1, Math.floor(usableWidth / charWidth));
+
+		const yInContent = Math.max(0, event.clientY - rect.top - paddingTop + ta.scrollTop);
+		const xInContent = Math.max(0, event.clientX - rect.left - paddingLeft + ta.scrollLeft);
+		const targetVisualLine = Math.max(0, Math.floor(yInContent / lineHeight));
+
+		const lines = content.split("\n");
+		let visualCursor = 0;
+		let lineIndex = 0;
+		let rowInLine = 0;
+
+		for (let i = 0; i < lines.length; i += 1) {
+			const rawLineLength = lines[i].length;
+			const visualRows = Math.max(1, Math.ceil(Math.max(rawLineLength, 1) / charsPerVisualLine));
+			if (targetVisualLine < visualCursor + visualRows) {
+				lineIndex = i;
+				rowInLine = targetVisualLine - visualCursor;
+				break;
+			}
+			visualCursor += visualRows;
+			lineIndex = i;
+			rowInLine = visualRows - 1;
+		}
+
+		const column = Math.max(0, Math.floor(xInContent / charWidth));
+		const rawLine = lines[lineIndex] || "";
+		const charOffset = Math.min(rawLine.length, rowInLine * charsPerVisualLine + column);
+
+		let index = charOffset;
+		for (let i = 0; i < lineIndex; i += 1) {
+			index += lines[i].length + 1;
+		}
+
+		const indicatorTop = Math.max(paddingTop, Math.min(ta.clientHeight - paddingBottom, paddingTop + targetVisualLine * lineHeight - ta.scrollTop));
+
+		return { index, indicatorTop };
+	}
+
+	function handleEditorDragEnter(event) {
+		if (!event.dataTransfer) return;
+		dragDepthRef.current += 1;
+		event.preventDefault();
+		setIsEditorDragActive(true);
+	}
+
+	function handleEditorDragOver(event) {
+		if (!event.dataTransfer) return;
+		const hasImage =
+			Array.from(event.dataTransfer.items || []).some((item) => item.kind === "file" && item.type?.startsWith("image/")) ||
+			Boolean(getDraggedImageFile(event.dataTransfer));
+		if (!hasImage) return;
+
+		event.preventDefault();
+		event.dataTransfer.dropEffect = "copy";
+		const placement = estimateDropPlacement(event);
+		setDropIndicatorTop(placement.indicatorTop);
+	}
+
+	function handleEditorDragLeave(event) {
+		event.preventDefault();
+		dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+		if (dragDepthRef.current === 0) {
+			setIsEditorDragActive(false);
+			setDropIndicatorTop(null);
+		}
+	}
+
+	async function handleEditorDrop(event) {
+		event.preventDefault();
+		dragDepthRef.current = 0;
+		setIsEditorDragActive(false);
+
+		const file = getDraggedImageFile(event.dataTransfer);
+		if (!file) {
+			setDropIndicatorTop(null);
+			return;
+		}
+
+		const placement = estimateDropPlacement(event);
+		setDropIndicatorTop(placement.indicatorTop);
+
+		toast.loading("Upload image en cours...");
+		const formData = new FormData();
+		formData.set("file", file);
+		formData.set("kind", "image");
+		const result = await uploadArticleMedia(formData);
+		toast.dismiss();
+
+		if (result?.error) {
+			toast.error(result.error);
+			setDropIndicatorTop(null);
+			return;
+		}
+
+		insertAtIndex(placement.index, `\n![image](${result.url})\n`);
+		setDropIndicatorTop(null);
+		toast.success("Image ajoutee dans l'article");
 	}
 
 	function resolveSelectionRange({ fallbackToSavedSelection = false } = {}) {
@@ -837,6 +991,12 @@ export function ArticleForm({ article, allTags = [] }) {
 						setContextualQuickInsertSuggestions(getContextualQuickInserts(value, start, end));
 					}}
 					onEditorKeyDown={handleEditorKeyDown}
+					onEditorDragEnter={handleEditorDragEnter}
+					onEditorDragOver={handleEditorDragOver}
+					onEditorDragLeave={handleEditorDragLeave}
+					onEditorDrop={handleEditorDrop}
+					isEditorDragActive={isEditorDragActive}
+					dropIndicatorTop={dropIndicatorTop}
 					slashInput={slashInput}
 					onSlashInputChange={setSlashInput}
 					onApplySlashCommand={() => {

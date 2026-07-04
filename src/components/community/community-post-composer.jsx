@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { createCommunityPost, uploadCommunityPostImage } from "@/app/(member)/community/actions";
@@ -19,13 +19,18 @@ function initialsFromName(name, email) {
 		.slice(0, 2);
 }
 
-export function CommunityPostComposer({ user, placeholder, submitLabel = "Publier", cardStyle = "default" }) {
+export function CommunityPostComposer({ user, placeholder, submitLabel = "Publier", cardStyle = "default", initialContent = "" }) {
 	const fileInputRef = useRef(null);
 	const formRef = useRef(null);
 	const [uploadingImage, setUploadingImage] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
 	const [imageUrl, setImageUrl] = useState("");
+	const [content, setContent] = useState(initialContent || "");
 	const initials = initialsFromName(user?.name, user?.email);
+
+	useEffect(() => {
+		setContent(initialContent || "");
+	}, [initialContent]);
 
 	async function handleImageChange(event) {
 		const file = event.target.files?.[0];
@@ -71,6 +76,7 @@ export function CommunityPostComposer({ user, placeholder, submitLabel = "Publie
 			}
 
 			setImageUrl("");
+			setContent("");
 			if (fileInputRef.current) {
 				fileInputRef.current.value = "";
 			}
@@ -145,6 +151,8 @@ export function CommunityPostComposer({ user, placeholder, submitLabel = "Publie
 					<Textarea
 						name="content"
 						rows={2}
+						value={content}
+						onChange={(event) => setContent(event.target.value)}
 						className="resize-none border-0 bg-transparent px-0 py-0 shadow-none focus-visible:ring-0 placeholder:text-muted-foreground/50"
 						placeholder={placeholder}
 						required

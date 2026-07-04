@@ -74,10 +74,17 @@ export function QuizEditor({ courseId, moduleId, quiz }) {
 	}
 
 	async function handleDeleteQuestion() {
-		const result = await deleteQuestion(courseId, moduleId, deletingQuestion.id);
+		const currentDeletingQuestion = deletingQuestion;
+		if (!currentDeletingQuestion?.id) {
+			setDeletingQuestion(null);
+			return;
+		}
+
+		const result = await deleteQuestion(courseId, moduleId, currentDeletingQuestion.id);
 		if (result?.error) toast.error(result.error);
 		else toast.success("Question supprimée");
 		setDeletingQuestion(null);
+		router.refresh();
 	}
 
 	function updateOption(idx, field, value) {
@@ -114,7 +121,7 @@ export function QuizEditor({ courseId, moduleId, quiz }) {
 				<CardContent>
 					<form
 						onSubmit={handleSaveQuizMeta}
-						className="space-y-4 max-w-xl"
+						className="space-y-4 w-full"
 					>
 						<div className="space-y-2">
 							<Label htmlFor="title">Titre du quiz</Label>
@@ -211,7 +218,7 @@ export function QuizEditor({ courseId, moduleId, quiz }) {
 				open={!!editingQuestion}
 				onOpenChange={(open) => !open && setEditingQuestion(null)}
 			>
-				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+				<DialogContent className="w-full max-w-[90%] max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>{editingQuestion?.id ? "Modifier la question" : "Nouvelle question"}</DialogTitle>
 						<DialogDescription>Coche la (ou les) bonne(s) réponse(s)</DialogDescription>

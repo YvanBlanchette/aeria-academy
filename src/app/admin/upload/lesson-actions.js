@@ -5,6 +5,7 @@ import { existsSync } from "fs";
 import path from "path";
 import { randomUUID } from "crypto";
 import { auth } from "@/auth";
+import { convertImageFileToWebpBuffer } from "@/lib/server/image-conversion";
 
 // Configurations par type de fichier
 const FILE_CONFIGS = {
@@ -34,6 +35,12 @@ const FILE_CONFIGS = {
 		allowedMimes: ["video/mp4", "video/webm", "video/quicktime"],
 		maxSize: 500 * 1024 * 1024, // 500 MB
 		subdir: "video",
+	},
+	IMAGE: {
+		allowedMimes: ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"],
+		maxSize: 20 * 1024 * 1024,
+		subdir: "images",
+		webpQuality: 82,
 	},
 };
 
@@ -71,16 +78,30 @@ export async function uploadLessonFile(formData) {
 		await mkdir(uploadDir, { recursive: true });
 	}
 
-	const ext = path.extname(file.name) || "";
+	const ext = lessonType === "IMAGE" ? ".webp" : path.extname(file.name) || "";
 	const filename = `${randomUUID()}${ext}`;
 	const filepath = path.join(uploadDir, filename);
 
-	const bytes = await file.arrayBuffer();
-	await writeFile(filepath, Buffer.from(bytes));
+	let outputBuffer;
+	if (lessonType === "IMAGE") {
+		try {
+			outputBuffer = await convertImageFileToWebpBuffer({
+				file,
+				quality: config.webpQuality,
+			});
+		} catch {
+			return { error: "Impossible de convertir l'image en WebP" };
+		}
+	} else {
+		const bytes = await file.arrayBuffer();
+		outputBuffer = Buffer.from(bytes);
+	}
+
+	await writeFile(filepath, outputBuffer);
 
 	return {
 		url: `/uploads/lessons/${config.subdir}/${filename}`,
 		filename: file.name,
-		size: file.size,
+		size: outputBuffer.length,
 	};
 }

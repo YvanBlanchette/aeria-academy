@@ -93,6 +93,7 @@ export function TagsManager({ tags }) {
 									value={pathInput}
 									onChange={(e) => setPathInput(e.target.value)}
 									placeholder="Destinations > Europe > Ecosse > Edimbourg"
+									className="bg-neutral-100 shadow-inner"
 								/>
 								<Button
 									type="button"
@@ -111,6 +112,7 @@ export function TagsManager({ tags }) {
 								onChange={(e) => setNewName(e.target.value)}
 								placeholder="Nom du tag (ex: Croisieres / Premium)"
 								required
+								className="bg-neutral-100 shadow-inner"
 							/>
 							<input
 								type="color"
@@ -141,7 +143,7 @@ export function TagsManager({ tags }) {
 							{tags.map((tag) => (
 								<li
 									key={tag.id}
-									className="flex items-center gap-3 rounded-md border p-3"
+									className="flex items-center gap-3 rounded-md border p-3 shadow-sm"
 								>
 									{editingId === tag.id ? (
 										<>

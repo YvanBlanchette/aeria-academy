@@ -90,50 +90,50 @@ export default async function UsersPage({ searchParams }) {
 					<div className="flex flex-wrap justify-start items-center gap-2">
 						<Link
 							href={hrefWith({ role: "all", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "all" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Tous
 						</Link>
 						<Link
 							href={hrefWith({ role: "STUDENT", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "STUDENT" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "STUDENT" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Étudiants
 						</Link>
 						<Link
 							href={hrefWith({ role: "INSTRUCTOR", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "INSTRUCTOR" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "INSTRUCTOR" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Instructeurs
 						</Link>
 						<Link
 							href={hrefWith({ role: "ADMIN", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "ADMIN" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${role === "ADMIN" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Admins
 						</Link>
 						<span className="h-8 w-px bg-neutral-300 mx-6" />
 						<Link
 							href={hrefWith({ membership: "all", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "all" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Tous
 						</Link>
 						<Link
 							href={hrefWith({ membership: "FREE", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "FREE" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "FREE" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Gratuit
 						</Link>
 						<Link
 							href={hrefWith({ membership: "ACADEMY", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "ACADEMY" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "ACADEMY" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Académie
 						</Link>
 						<Link
 							href={hrefWith({ membership: "PRIME", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "PRIME" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "PRIME" ? "bg-primary text-primary-foreground" : "bg-neutral-100 hover:bg-neutral-100/70 shadow-inner"}`}
 						>
 							Prime
 						</Link>
@@ -150,7 +150,7 @@ export default async function UsersPage({ searchParams }) {
 								name="q"
 								defaultValue={q}
 								placeholder="Rechercher un membre"
-								className="h-9 rounded-md border bg-background pl-8 pr-3 text-sm"
+								className="h-9 rounded-md border bg-neutral-100 shadow-inner pl-8 pr-3 text-sm"
 							/>
 							{role !== "all" ? (
 								<input

@@ -39,6 +39,12 @@ export function QuizAttemptForm({ courseId, quiz, canAttempt, attemptsUsed, atte
 		setResult(null);
 	}
 
+	function handleShareBadge() {
+		if (!result?.shareBadgeText) return;
+		const targetUrl = `/community?prefill=${encodeURIComponent(result.shareBadgeText)}`;
+		router.push(targetUrl);
+	}
+
 	async function handleSubmit() {
 		if (!canAttempt) {
 			toast.error("Aucune tentative disponible pour ce quiz");
@@ -64,6 +70,9 @@ export function QuizAttemptForm({ courseId, quiz, canAttempt, attemptsUsed, atte
 			}
 
 			setResult(response);
+			if (response.quizBadgeUnlocked) {
+				toast.success(`Nouveau badge debloque: ${response.quizBadgeTitle || "Quiz reussi"}`);
+			}
 			if (response.certificateUnlocked) {
 				toast.success("Bravo! Tu as debloque ton certificat pour ce cours.");
 			} else {
@@ -133,6 +142,16 @@ export function QuizAttemptForm({ courseId, quiz, canAttempt, attemptsUsed, atte
 					</p>
 					<p>Seuil de reussite: {result.passingScore}%</p>
 					<p>{result.passed ? "Bravo, quiz reussi." : "Quiz non reussi, tu peux reessayer si une tentative est disponible."}</p>
+					{result.quizBadgeUnlocked ? (
+						<Button
+							type="button"
+							variant="outline"
+							onClick={handleShareBadge}
+							className="mt-3 rounded-full"
+						>
+							Partager mon badge dans la communaute
+						</Button>
+					) : null}
 				</div>
 			) : null}
 

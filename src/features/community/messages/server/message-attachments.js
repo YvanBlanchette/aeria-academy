@@ -2,6 +2,7 @@ import { existsSync } from "fs";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { convertImageFileToWebpBuffer, isImageMimeType } from "@/lib/server/image-conversion";
 
 const COMMUNITY_MESSAGE_ATTACHMENT_CONFIG = {
 	// Centralized policy for file acceptance and size limits.
@@ -95,7 +96,8 @@ export async function uploadCommunityMessageAttachment({ file, sessionUserId }) 
 		return { error: "Fichier trop volumineux (15 MB max)" };
 	}
 
-	const ext = getSafeAttachmentExtension(file);
+	const isImage = isImageMimeType(file.type);
+	const ext = isImage ? ".webp" : getSafeAttachmentExtension(file);
 	const uploadDir = path.join(process.cwd(), "public", "uploads", "community", "messages");
 	if (!existsSync(uploadDir)) {
 		await mkdir(uploadDir, { recursive: true });
@@ -103,13 +105,25 @@ export async function uploadCommunityMessageAttachment({ file, sessionUserId }) 
 
 	const filename = `${sessionUserId}-${randomUUID()}${ext}`;
 	const filePath = path.join(uploadDir, filename);
-	const bytes = await file.arrayBuffer();
-	await writeFile(filePath, Buffer.from(bytes));
+
+	let outputBuffer;
+	if (isImage) {
+		try {
+			outputBuffer = await convertImageFileToWebpBuffer({ file });
+		} catch {
+			return { error: "Impossible de convertir l'image en WebP" };
+		}
+	} else {
+		const bytes = await file.arrayBuffer();
+		outputBuffer = Buffer.from(bytes);
+	}
+
+	await writeFile(filePath, outputBuffer);
 
 	return {
 		url: `/uploads/community/messages/${filename}`,
 		name: (file.name || "fichier").slice(0, 180),
-		mimeType: file.type,
-		size: file.size,
+		mimeType: isImage ? "image/webp" : file.type,
+		size: outputBuffer.length,
 	};
 }

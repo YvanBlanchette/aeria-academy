@@ -9,6 +9,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { normalizePublicVisibility } from "@/lib/profile-visibility";
+import { convertImageFileToWebpBuffer } from "@/lib/server/image-conversion";
 import { RESERVED_USERNAMES, findAvailableUsername, usernameBaseFromUser, generateDefaultUsernameForUser } from "@/lib/username";
 
 // Helper : valide qu'une chaîne est une URL ou vide
@@ -292,7 +293,8 @@ async function revalidateOwnProfilePaths(userId) {
 
 const PROFILE_IMAGE_CONFIG = {
 	allowedMimes: ["image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"],
-	maxSize: 5 * 1024 * 1024, // 5 MB
+	maxSourceSize: 20 * 1024 * 1024,
+	webpQuality: 82,
 };
 
 async function uploadUserImage({ file, sessionUserId, folder }) {
@@ -300,21 +302,29 @@ async function uploadUserImage({ file, sessionUserId, folder }) {
 		return { error: `Format invalide. Reçu : ${file.type}` };
 	}
 
-	if (file.size > PROFILE_IMAGE_CONFIG.maxSize) {
-		return { error: "Image trop volumineuse (5 MB max)" };
+	if (file.size > PROFILE_IMAGE_CONFIG.maxSourceSize) {
+		return { error: "Image trop volumineuse (20 MB max avant conversion)" };
 	}
 
-	const ext = (path.extname(file.name) || "").toLowerCase();
 	const uploadDir = path.join(process.cwd(), "public", "uploads", "users", folder);
 	if (!existsSync(uploadDir)) {
 		await mkdir(uploadDir, { recursive: true });
 	}
 
-	const filename = `${sessionUserId}-${randomUUID()}${ext}`;
+	const filename = `${sessionUserId}-${randomUUID()}.webp`;
 	const filePath = path.join(uploadDir, filename);
 
-	const bytes = await file.arrayBuffer();
-	await writeFile(filePath, Buffer.from(bytes));
+	let webpBuffer;
+	try {
+		webpBuffer = await convertImageFileToWebpBuffer({
+			file,
+			quality: PROFILE_IMAGE_CONFIG.webpQuality,
+		});
+	} catch {
+		return { error: "Impossible de convertir l'image en WebP" };
+	}
+
+	await writeFile(filePath, webpBuffer);
 
 	return {
 		url: `/uploads/users/${folder}/${filename}`,

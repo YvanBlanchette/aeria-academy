@@ -114,7 +114,7 @@ export default async function AdminAgencyDetailPage({ params }) {
 			</div>
 
 			{/* Bandeau d'actions selon statut */}
-			<Card className="mb-6">
+			<Card className="mb-6 shadow-sm">
 				<CardContent className="p-6 flex items-center justify-between flex-wrap gap-4">
 					<div className="flex items-center gap-3">
 						<Badge variant={agency.approved ? "default" : "secondary"}>{agency.approved ? "Approuvée" : "En attente"}</Badge>
@@ -145,7 +145,7 @@ export default async function AdminAgencyDetailPage({ params }) {
 
 				{/* Sidebar : admin + membres */}
 				<div className="space-y-6">
-					<Card>
+					<Card className="shadow-sm">
 						<CardHeader>
 							<CardTitle className="text-base">Admin de l&apos;agence</CardTitle>
 						</CardHeader>
@@ -181,7 +181,7 @@ export default async function AdminAgencyDetailPage({ params }) {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm">
 						<CardHeader>
 							<CardTitle className="text-base flex items-center gap-2">
 								<Users className="h-4 w-4" />
@@ -229,7 +229,7 @@ export default async function AdminAgencyDetailPage({ params }) {
 					</Card>
 
 					{/* Aperçu coordonnées */}
-					<Card>
+					<Card className="shadow-sm">
 						<CardHeader>
 							<CardTitle className="text-base">Coordonnées</CardTitle>
 						</CardHeader>
@@ -270,7 +270,7 @@ export default async function AdminAgencyDetailPage({ params }) {
 						</CardContent>
 					</Card>
 
-					<Card>
+					<Card className="shadow-sm">
 						<CardHeader>
 							<CardTitle className="text-base flex items-center gap-2">
 								<Clock3 className="h-4 w-4" />
@@ -285,7 +285,7 @@ export default async function AdminAgencyDetailPage({ params }) {
 									{activityEvents.map((event) => (
 										<li
 											key={event.id}
-											className="border-l pl-3"
+											className="border-l pl-3 py-1 pr-2 rounded-r-md shadow-inner"
 										>
 											<p className="text-sm font-medium">{event.title}</p>
 											<p className="text-xs text-muted-foreground">{event.description}</p>

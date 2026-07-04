@@ -21,6 +21,7 @@ import {
 	ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { createLesson, updateLesson } from "@/app/admin/courses/[id]/modules/[moduleId]/actions";
+import { uploadLessonFile } from "@/app/admin/upload/lesson-actions";
 import { LessonFileUpload } from "../ui/lesson-file-upload";
 
 const contentLabels = {
@@ -63,6 +64,8 @@ export function LessonForm({ courseId, moduleId, lesson }) {
 	const [audioUrl, setAudioUrl] = useState(lesson?.audioUrl || "");
 	const [audioUrlExpress, setAudioUrlExpress] = useState(lesson?.audioUrlExpress || "");
 	const [hasTextSelection, setHasTextSelection] = useState(false);
+	const [isEditorDragActive, setIsEditorDragActive] = useState(false);
+	const [dropIndicatorTop, setDropIndicatorTop] = useState(null);
 	const [contextualQuickInsertSuggestions, setContextualQuickInsertSuggestions] = useState([
 		{
 			key: "calloutSuccess",
@@ -75,6 +78,7 @@ export function LessonForm({ courseId, moduleId, lesson }) {
 			description: QUICK_INSERT_SNIPPET_META.cta.description,
 		},
 	]);
+	const dragDepthRef = useRef(0);
 	const isEdit = !!lesson;
 
 	function insertAtCursor(text) {
@@ -90,6 +94,187 @@ export function LessonForm({ courseId, moduleId, lesson }) {
 			ta.setSelectionRange(cursor, cursor);
 			savedSelectionRef.current = { start: cursor, end: cursor };
 		}, 0);
+	}
+
+	function insertAtIndex(index, text) {
+		const ta = textareaRef.current;
+		const safeIndex = Math.max(0, Math.min(content.length, Number(index) || 0));
+		const next = content.slice(0, safeIndex) + text + content.slice(safeIndex);
+		setContent(next);
+		setTimeout(() => {
+			if (!ta) return;
+			ta.focus();
+			const cursor = safeIndex + text.length;
+			ta.setSelectionRange(cursor, cursor);
+			savedSelectionRef.current = { start: cursor, end: cursor };
+		}, 0);
+	}
+
+	function getDraggedImageFile(dataTransfer) {
+		if (!dataTransfer) return null;
+		if (dataTransfer.files?.length) {
+			return Array.from(dataTransfer.files).find((file) => file.type?.startsWith("image/")) || null;
+		}
+		if (dataTransfer.items?.length) {
+			const imageItem = Array.from(dataTransfer.items).find((item) => item.kind === "file" && item.type?.startsWith("image/"));
+			return imageItem?.getAsFile?.() || null;
+		}
+		return null;
+	}
+
+	function estimateDropPlacement(event) {
+		const ta = textareaRef.current;
+		if (!ta) {
+			return { index: content.length, indicatorTop: null };
+		}
+
+		const styles = window.getComputedStyle(ta);
+		const rect = ta.getBoundingClientRect();
+		const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+		const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
+		const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+		const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
+		const lineHeight = Number.parseFloat(styles.lineHeight) || 20;
+		const fontSize = Number.parseFloat(styles.fontSize) || 16;
+		const fontFamily = styles.fontFamily || "sans-serif";
+
+		const usableWidth = Math.max(1, ta.clientWidth - paddingLeft - paddingRight);
+		const canvas = document.createElement("canvas");
+		const ctx = canvas.getContext("2d");
+		if (ctx) {
+			ctx.font = `${styles.fontStyle} ${styles.fontVariant} ${styles.fontWeight} ${fontSize}px ${fontFamily}`;
+		}
+		const charWidth = Math.max(7, ctx?.measureText("M").width || fontSize * 0.58);
+		const charsPerVisualLine = Math.max(1, Math.floor(usableWidth / charWidth));
+
+		const yInContent = Math.max(0, event.clientY - rect.top - paddingTop + ta.scrollTop);
+		const xInContent = Math.max(0, event.clientX - rect.left - paddingLeft + ta.scrollLeft);
+		const targetVisualLine = Math.max(0, Math.floor(yInContent / lineHeight));
+
+		const lines = content.split("\n");
+		let visualCursor = 0;
+		let lineIndex = 0;
+		let rowInLine = 0;
+
+		for (let i = 0; i < lines.length; i += 1) {
+			const rawLineLength = lines[i].length;
+			const visualRows = Math.max(1, Math.ceil(Math.max(rawLineLength, 1) / charsPerVisualLine));
+			if (targetVisualLine < visualCursor + visualRows) {
+				lineIndex = i;
+				rowInLine = targetVisualLine - visualCursor;
+				break;
+			}
+			visualCursor += visualRows;
+			lineIndex = i;
+			rowInLine = visualRows - 1;
+		}
+
+		const column = Math.max(0, Math.floor(xInContent / charWidth));
+		const rawLine = lines[lineIndex] || "";
+		const charOffset = Math.min(rawLine.length, rowInLine * charsPerVisualLine + column);
+
+		let index = charOffset;
+		for (let i = 0; i < lineIndex; i += 1) {
+			index += lines[i].length + 1;
+		}
+
+		const indicatorTop = Math.max(paddingTop, Math.min(ta.clientHeight - paddingBottom, paddingTop + targetVisualLine * lineHeight - ta.scrollTop));
+
+		return { index, indicatorTop };
+	}
+
+	function handleEditorDragEnter(event) {
+		if (!event.dataTransfer || type !== "TEXT") return;
+		dragDepthRef.current += 1;
+		event.preventDefault();
+		setIsEditorDragActive(true);
+	}
+
+	function handleEditorDragOver(event) {
+		if (!event.dataTransfer || type !== "TEXT") return;
+		const hasImage =
+			Array.from(event.dataTransfer.items || []).some((item) => item.kind === "file" && item.type?.startsWith("image/")) ||
+			Boolean(getDraggedImageFile(event.dataTransfer));
+		if (!hasImage) return;
+
+		event.preventDefault();
+		event.dataTransfer.dropEffect = "copy";
+		const placement = estimateDropPlacement(event);
+		setDropIndicatorTop(placement.indicatorTop);
+	}
+
+	function handleEditorDragLeave(event) {
+		if (type !== "TEXT") return;
+		event.preventDefault();
+		dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+		if (dragDepthRef.current === 0) {
+			setIsEditorDragActive(false);
+			setDropIndicatorTop(null);
+		}
+	}
+
+	async function handleEditorDrop(event) {
+		if (type !== "TEXT") return;
+		event.preventDefault();
+		dragDepthRef.current = 0;
+		setIsEditorDragActive(false);
+
+		const file = getDraggedImageFile(event.dataTransfer);
+		if (!file) {
+			setDropIndicatorTop(null);
+			return;
+		}
+
+		const placement = estimateDropPlacement(event);
+		setDropIndicatorTop(placement.indicatorTop);
+
+		toast.loading("Upload image en cours...");
+		const formData = new FormData();
+		formData.set("file", file);
+		formData.set("type", "IMAGE");
+		const result = await uploadLessonFile(formData);
+		toast.dismiss();
+
+		if (result?.error) {
+			toast.error(result.error);
+			setDropIndicatorTop(null);
+			return;
+		}
+
+		insertAtIndex(placement.index, `\n![image](${result.url})\n`);
+		setDropIndicatorTop(null);
+		toast.success("Image ajoutee dans la lecon");
+	}
+
+	async function handleTextEditorPaste(event) {
+		if (type !== "TEXT") return;
+
+		const clipboardItems = Array.from(event.clipboardData?.items || []);
+		const imageItem = clipboardItems.find((item) => item.kind === "file" && item.type?.startsWith("image/"));
+		if (!imageItem) return;
+
+		const imageFile = imageItem.getAsFile?.();
+		if (!imageFile) return;
+
+		event.preventDefault();
+
+		const ta = textareaRef.current;
+		const insertionIndex = ta?.selectionStart ?? content.length;
+
+		toast.loading("Upload image du presse-papiers...");
+		const formData = new FormData();
+		formData.set("file", imageFile);
+		formData.set("type", "IMAGE");
+		const result = await uploadLessonFile(formData);
+		toast.dismiss();
+
+		if (result?.error) {
+			toast.error(result.error);
+			return;
+		}
+
+		insertAtIndex(insertionIndex, `\n![image](${result.url})\n`);
+		toast.success("Image collee dans la lecon");
 	}
 
 	function resolveSelectionRange({ fallbackToSavedSelection = false } = {}) {
@@ -360,6 +545,25 @@ export function LessonForm({ courseId, moduleId, lesson }) {
 		);
 	}
 
+	function renderDropIndicator() {
+		if (!isEditorDragActive || type !== "TEXT") return null;
+
+		return (
+			<>
+				<div className="pointer-events-none absolute inset-0 bg-primary/5" />
+				{typeof dropIndicatorTop === "number" ? (
+					<div
+						className="pointer-events-none absolute left-5 right-5 z-10"
+						style={{ top: `${dropIndicatorTop}px` }}
+					>
+						<div className="h-0.5 w-full rounded-full bg-primary" />
+						<span className="absolute -top-5 left-0 rounded bg-primary px-1.5 py-0.5 text-[10px] font-medium text-primary-foreground">Insertion image</span>
+					</div>
+				) : null}
+			</>
+		);
+	}
+
 	return (
 		<form
 			onSubmit={handleSubmit}
@@ -462,34 +666,44 @@ export function LessonForm({ courseId, moduleId, lesson }) {
 
 						<ContextMenu>
 							<ContextMenuTrigger className="block">
-								<Textarea
-									id="content"
-									name="content"
-									ref={textareaRef}
-									value={content}
-									onChange={(e) => {
-										const value = e.target.value;
-										const start = e.target.selectionStart ?? value.length;
-										const end = e.target.selectionEnd ?? start;
-										setContent(value);
-										setContextualQuickInsertSuggestions(getContextualQuickInserts(value, start, end));
-									}}
-									onSelect={syncSelectionState}
-									onKeyUp={syncSelectionState}
-									onMouseUp={syncSelectionState}
-									onContextMenu={syncSelectionState}
-									onKeyDown={handleTextEditorKeyDown}
-									placeholder={contentField.placeholder}
-									rows={14}
-									required
-									className="border-0 rounded-none bg-white px-5 py-4 shadow-none focus-visible:ring-0"
-								/>
+								<div
+									className="relative"
+									onDragEnter={handleEditorDragEnter}
+									onDragOver={handleEditorDragOver}
+									onDragLeave={handleEditorDragLeave}
+									onDrop={handleEditorDrop}
+								>
+									<Textarea
+										id="content"
+										name="content"
+										ref={textareaRef}
+										value={content}
+										onChange={(e) => {
+											const value = e.target.value;
+											const start = e.target.selectionStart ?? value.length;
+											const end = e.target.selectionEnd ?? start;
+											setContent(value);
+											setContextualQuickInsertSuggestions(getContextualQuickInserts(value, start, end));
+										}}
+										onSelect={syncSelectionState}
+										onKeyUp={syncSelectionState}
+										onMouseUp={syncSelectionState}
+										onContextMenu={syncSelectionState}
+										onPaste={handleTextEditorPaste}
+										onKeyDown={handleTextEditorKeyDown}
+										placeholder={contentField.placeholder}
+										rows={14}
+										required
+										className="border-0 rounded-none bg-white px-5 py-4 shadow-none focus-visible:ring-0"
+									/>
+									{renderDropIndicator()}
+								</div>
 							</ContextMenuTrigger>
 							{renderTextEditorContextMenu()}
 						</ContextMenu>
 
 						<p className="px-3 py-2 text-xs text-muted-foreground border-t border-border/60 bg-muted/20">
-							Astuce: clic droit pour les actions premium ou Ctrl+B / Ctrl+I / Ctrl+K.
+							Astuce: clic droit pour les actions premium, Ctrl+B / Ctrl+I / Ctrl+K, ou Ctrl+V pour coller une image.
 						</p>
 					</div>
 				) : (

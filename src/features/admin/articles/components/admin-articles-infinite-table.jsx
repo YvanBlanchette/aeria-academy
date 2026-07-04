@@ -44,7 +44,7 @@ export function AdminArticlesInfiniteTable({ initialData, queryString, storageKe
 					Tri: <span className="font-medium text-foreground">{sort}</span> ({dir})
 				</p>
 			</div>
-			<div className="overflow-hidden rounded-lg border bg-card">
+			<div className="overflow-hidden rounded-lg border bg-card shadow-sm">
 				<Table>
 					<TableHeader className="bg-[#171717] text-white hover:pointer-events-none hover:bg-[#171717]">
 						<TableRow>

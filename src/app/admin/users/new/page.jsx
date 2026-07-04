@@ -7,7 +7,7 @@ export default function NewUserPage() {
 		<div className="p-6 lg:p-8 space-y-6 max-w-5xl mx-auto bg-neutral-100">
 			<div className="flex items-center justify-end mb-2">
 				<Link href="/admin/users">
-					<Button className="rounded-sm">Retour aux Membres</Button>
+					<Button className="rounded-sm shadow-sm active:shadow-inner">Retour aux Membres</Button>
 				</Link>
 			</div>
 

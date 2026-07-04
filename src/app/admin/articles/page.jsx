@@ -89,7 +89,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						<Link
 							href={hrefWith({ status: "all", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								status === "all" ? "bg-primary text-primary-foreground" : "bg-neutral-100 shadow-inner  hover:bg-neutral-100/70"
 							}`}
 						>
 							Tous
@@ -97,7 +97,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						<Link
 							href={hrefWith({ status: "draft", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "draft" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								status === "draft" ? "bg-primary text-primary-foreground" : "bg-neutral-100 shadow-inner  hover:bg-neutral-100/70"
 							}`}
 						>
 							Brouillons
@@ -113,7 +113,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						<Link
 							href={hrefWith({ status: "published", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "published" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								status === "published" ? "bg-primary text-primary-foreground" : "bg-neutral-100 shadow-inner  hover:bg-neutral-100/70"
 							}`}
 						>
 							Publiés
@@ -122,7 +122,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						<Link
 							href={hrefWith({ tier: "FREE", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								tier === "FREE" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								tier === "FREE" ? "bg-primary text-primary-foreground" : "bg-neutral-100 shadow-inner  hover:bg-neutral-100/70"
 							}`}
 						>
 							Gratuit
@@ -130,7 +130,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						<Link
 							href={hrefWith({ tier: "ACADEMY", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								tier === "ACADEMY" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								tier === "ACADEMY" ? "bg-primary text-primary-foreground" : "bg-neutral-100 shadow-inner  hover:bg-neutral-100/70"
 							}`}
 						>
 							Académie
@@ -138,7 +138,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						<Link
 							href={hrefWith({ tier: "PRIME", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								tier === "PRIME" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+								tier === "PRIME" ? "bg-primary text-primary-foreground" : "bg-neutral-100 shadow-inner  hover:bg-neutral-100/70"
 							}`}
 						>
 							Prime
@@ -156,7 +156,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 								name="q"
 								defaultValue={q}
 								placeholder="Rechercher un article"
-								className="h-9 rounded-full bg-neutral-50 shadow-inner border pl-8 pr-3 text-sm"
+								className="h-9 rounded-md border bg-neutral-100 shadow-inner pl-8 pr-3 text-sm"
 							/>
 							{status !== "all" ? (
 								<input
@@ -188,7 +188,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 						</Link>
 						<Link
 							href="/admin/articles/tags"
-							className="px-3 py-1.5 rounded-md text-sm font-medium bg-muted hover:bg-muted/70"
+							className="px-3 py-1.5 rounded-md text-sm font-medium bg-neutral-100 shadow-inner hover:bg-neutral-100/70"
 						>
 							Gérer les tags →
 						</Link>
