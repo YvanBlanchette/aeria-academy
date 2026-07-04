@@ -118,7 +118,9 @@ export function AdminUsersInfiniteTable({ initialData, queryString, storageKey, 
 									<Badge variant={user.role === "ADMIN" ? "default" : "secondary"}>{renameUserRole(user.role)}</Badge>
 								</TableCell>
 								<TableCell className="border text-center">
-									<Badge variant={membershipBadgeVariant(user.membership)}>{user.membership}</Badge>
+									<Badge variant={membershipBadgeVariant(user.membership)}>
+										{user.membership === "FREE" ? "Gratuit" : user.membership === "ACADEMY" ? "Académie" : "Prime"}
+									</Badge>
 								</TableCell>
 								<TableCell className="border text-center">{user.email}</TableCell>
 								<TableCell className="border text-center">

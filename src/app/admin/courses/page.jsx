@@ -80,14 +80,6 @@ export default async function CoursesListPage({ searchParams }) {
 							Tous
 						</Link>
 						<Link
-							href={hrefWith({ status: "published" })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-								status === "published" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
-							}`}
-						>
-							Publiés
-						</Link>
-						<Link
 							href={hrefWith({ status: "draft" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
 								status === "draft" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
@@ -95,6 +87,15 @@ export default async function CoursesListPage({ searchParams }) {
 						>
 							Brouillons
 						</Link>
+						<Link
+							href={hrefWith({ status: "published" })}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+								status === "published" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
+							}`}
+						>
+							Publiés
+						</Link>
+						<span className="h-8 w-px bg-neutral-300 mx-6" />
 						<Link
 							href={hrefWith({ pricing: "free" })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${

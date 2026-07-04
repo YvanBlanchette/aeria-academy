@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { isMessageSoundEnabled, setMessageSoundEnabled } from "@/lib/message-sound-preferences";
 import { unblockUserFromSettings, updateDashboardPreferences, updatePassword, updatePrivacySettings } from "./actions";
 
 function membershipLabel(membership) {
@@ -54,6 +55,7 @@ export function DashboardSettingsClient({ initialUser, initialPreferences, block
 	const [isSavingPreferences, startSavingPreferences] = useTransition();
 	const [isSavingPassword, startSavingPassword] = useTransition();
 	const [isUnblocking, startUnblocking] = useTransition();
+	const [messageSoundEnabled, setMessageSoundEnabledState] = useState(() => isMessageSoundEnabled());
 
 	const [privacy, setPrivacy] = useState({
 		username: initialUser.username || "",
@@ -154,6 +156,12 @@ export function DashboardSettingsClient({ initialUser, initialPreferences, block
 			router.refresh();
 			toast.success("Utilisateur débloqué");
 		});
+	}
+
+	function handleMessageSoundToggle(enabled) {
+		setMessageSoundEnabledState(enabled);
+		setMessageSoundEnabled(enabled);
+		toast.success(enabled ? "Son des messages activé" : "Son des messages désactivé");
 	}
 
 	return (
@@ -381,6 +389,16 @@ export function DashboardSettingsClient({ initialUser, initialPreferences, block
 							<Separator />
 
 							<div className="space-y-3">
+								<div className="flex items-start justify-between rounded-md border p-3">
+									<div>
+										<p className="text-sm font-medium">Son des nouveaux messages</p>
+										<p className="text-xs text-muted-foreground">Active un signal sonore lors de la réception d&apos;un message (ce navigateur).</p>
+									</div>
+									<Switch
+										checked={messageSoundEnabled}
+										onCheckedChange={handleMessageSoundToggle}
+									/>
+								</div>
 								<div className="flex items-start justify-between rounded-md border p-3">
 									<div>
 										<p className="text-sm font-medium">Digest hebdomadaire</p>

@@ -76,12 +76,22 @@ export default async function CommunityPage({ searchParams }) {
 	if (focusPostId && !resolvedSearchParams?.page) {
 		const focusedPost = await prisma.communityPost.findUnique({
 			where: { id: focusPostId },
-			select: { createdAt: true },
+			select: { createdAt: true, content: true },
 		});
 
 		if (focusedPost) {
+			const focusMatchesQuery = !query || focusedPost.content?.toLowerCase().includes(query.toLowerCase());
+
+			if (!focusMatchesQuery) {
+				const targetPath = `/community#post-${focusPostId}`;
+				redirect(targetPath);
+			}
+
 			const newerPostsCount = await prisma.communityPost.count({
-				where: { createdAt: { gt: focusedPost.createdAt } },
+				where: {
+					...(postWhere || {}),
+					createdAt: { gt: focusedPost.createdAt },
+				},
 			});
 			const targetPage = Math.floor(newerPostsCount / PAGE_SIZE) + 1;
 			const targetParams = new URLSearchParams();
@@ -282,7 +292,7 @@ export default async function CommunityPage({ searchParams }) {
 													<Button
 														type="submit"
 														variant="ghost"
-														className="rounded-full absolute right-3 top-3 text-neutral-400 hover:text-neutral-800 transition-all opacity-0 group-hover/post:opacity-100 bg-transparent hover:bg-transparent"
+														className="rounded-full absolute right-3 top-3 text-neutral-400 hover:text-neutral-800 transition-all opacity-0 group-hover/post:opacity-100 group-focus-within/post:opacity-100 bg-transparent hover:bg-transparent"
 													>
 														<FaXmark className="h-6 w-6" />
 													</Button>
@@ -410,7 +420,7 @@ export default async function CommunityPage({ searchParams }) {
 																	<Button
 																		type="submit"
 																		variant="ghost"
-																		className="opacity-0 group-hover/comment:opacity-100 transition-all rounded-full absolute right-1 top-1 text-neutral-400 hover:text-neutral-800"
+																		className="opacity-0 group-hover/comment:opacity-100 group-focus-within/comment:opacity-100 transition-all rounded-full absolute right-1 top-1 text-neutral-400 hover:text-neutral-800"
 																	>
 																		<FaXmark className="h-4 w-4" />
 																	</Button>

@@ -49,13 +49,12 @@ function groupStoriesByAuthor(stories) {
 
 function CreateStoryCard({ onClick, currentUser }) {
 	const user = currentUser;
-	console.log(currentUser);
 
 	return (
 		<button
 			type="button"
 			onClick={onClick}
-			className="cursor-pointer group relative flex h-46 w-31 shrink-0 flex-col justify-between overflow-hidden rounded-3xl border border-dashed border-border bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:h-56 sm:w-36"
+			className="cursor-pointer group relative flex h-46 min-h-64 w-full flex-col justify-between overflow-hidden rounded-3xl border border-dashed border-border bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md sm:h-56"
 		>
 			<div className="flex flex-col items-center justify-center h-full">
 				<div className="w-full h-2/3 relative overflow-hidden bg-muted border-b border-border">
@@ -85,9 +84,24 @@ function CreateStoryCard({ onClick, currentUser }) {
 	);
 }
 
+function EmptyStorySlot() {
+	return (
+		<div
+			aria-hidden
+			className="hidden min-h-64 w-full rounded-3xl  bg-neutral-200 shadow-inner lg:flex sm:h-56"
+		>
+			<div className="flex h-full w-full flex-col items-center justify-center text-muted-foreground/80">
+				<p className="text-xs font-medium tracking-wider uppercase opacity-50 mb-1">Empty</p>
+				<p className="text-xs font-medium tracking-wider uppercase opacity-50">Story slot</p>
+			</div>
+		</div>
+	);
+}
+
 function CreateStoryDialog({ open, onOpenChange, currentUser, onSuccess }) {
 	return (
 		<Dialog
+			modal={false}
 			open={open}
 			onOpenChange={onOpenChange}
 		>
@@ -103,6 +117,7 @@ function CreateStoryDialog({ open, onOpenChange, currentUser, onSuccess }) {
 
 export function CommunityStoriesStrip({ stories = [], currentUser }) {
 	const groups = useMemo(() => groupStoriesByAuthor(stories), [stories]);
+	const emptyLgSlotsCount = Math.max(0, 6 - (groups.length + 1));
 	const [open, setOpen] = useState(false);
 	const [activeGroupIndex, setActiveGroupIndex] = useState(0);
 	const [activeStoryIndex, setActiveStoryIndex] = useState(0);
@@ -163,15 +178,17 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 
 	return (
 		<>
-			<div className="flex gap-3 pb-1">
+			{/* STORIES STRIP */}
+			<div className="grid grid-cols-2 gap-3 pb-1 sm:grid-cols-4 lg:grid-cols-6">
+				{/* CREATE STORY CARD */}
 				<CreateStoryCard
 					onClick={() => setCreateOpen(true)}
 					currentUser={currentUser}
 				/>
 
+				{/* STORY CARDS BY AUTHOR */}
 				{groups.map((group, index) => {
 					const initials = initialsFromName(group.author.name, group.author.email);
-					console.log(group);
 					const coverImage = group.stories.find((story) => story.imageUrl)?.imageUrl || "";
 					const latestStory = group.stories[group.stories.length - 1];
 					return (
@@ -179,7 +196,7 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 							key={group.author.id}
 							type="button"
 							onClick={() => openGroup(index)}
-							className="cursor-pointer  group relative flex h-46 w-31 shrink-0 overflow-hidden rounded-3xl border border-border/60 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:h-56 sm:w-36"
+							className="cursor-pointer group relative flex h-46 min-h-64 w-full overflow-hidden rounded-3xl border border-border/60 bg-white text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg sm:h-56"
 						>
 							<div className={`absolute inset-0 ${coverImage ? "" : "bg-linear-to-b from-[#101828] via-[#334155] to-[#0f172a]"}`}>
 								{coverImage ? (
@@ -216,9 +233,16 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 						</button>
 					);
 				})}
+
+				{/* EMPTY STORY SLOTS TO KEEP A 5-COLUMN LAYOUT ON LARGE SCREENS */}
+				{Array.from({ length: emptyLgSlotsCount }).map((_, index) => (
+					<EmptyStorySlot key={`empty-story-slot-${index}`} />
+				))}
 			</div>
 
+			{/* STORY VIEWER DIALOG */}
 			<Dialog
+				modal={false}
 				open={open}
 				onOpenChange={(nextOpen) => {
 					if (!nextOpen) closeViewer();
@@ -226,10 +250,11 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 			>
 				<DialogContent
 					showCloseButton={false}
-					className="h-[92vh] w-[calc(100%-1rem)] max-w-5xl overflow-hidden border-0 bg-black p-0 text-white"
+					className="h-[92vh] w-[calc(100%-1rem)] min-w-125 max-w-[90vw] overflow-hidden border-0 bg-black p-0 text-white"
 				>
 					{activeGroup && activeStory ? (
-						<div className="relative flex h-full flex-col bg-black">
+						<div className="relative flex h-full flex-col bg-black ">
+							{/* STORY PROGRESS BAR */}
 							<div className="absolute inset-x-0 top-0 z-20 flex gap-1 p-3">
 								{activeGroup.stories.map((story, index) => (
 									<div
@@ -239,6 +264,7 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 								))}
 							</div>
 
+							{/* STORY HEADER */}
 							<div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between p-4 pt-6">
 								<div className="flex items-center gap-3">
 									<Avatar className="h-10 w-10 border border-white/20">
@@ -261,20 +287,22 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 								</Button>
 							</div>
 
+							{/* LEFT/RIGHT CLICK ZONES FOR STORY NAVIGATION */}
 							<div className="relative flex flex-1 items-stretch justify-stretch">
 								<button
 									type="button"
-									className="absolute inset-y-0 left-0 z-10 w-1/2 cursor-w-resize"
+									className="absolute inset-y-0 left-0 z-10 w-1/2 cursor-default"
 									onClick={goToPrevious}
 									aria-label="Story précédente"
 								/>
 								<button
 									type="button"
-									className="absolute inset-y-0 right-0 z-10 w-1/2 cursor-e-resize"
+									className="absolute inset-y-0 right-0 z-10 w-1/2 cursor-default"
 									onClick={goToNext}
 									aria-label="Story suivante"
 								/>
 
+								{/* STORY CONTENT: IMAGE OR TEXT */}
 								<div className="relative flex-1 bg-black">
 									{activeStory.imageUrl ? (
 										// eslint-disable-next-line @next/next/no-img-element
@@ -297,6 +325,7 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 								</div>
 							</div>
 
+							{/* STORY FOOTER CONTROLS */}
 							<div className="flex items-center justify-between border-t border-white/10 bg-black/80 px-4 py-3 text-sm text-white/80">
 								<button
 									type="button"
@@ -306,8 +335,10 @@ export function CommunityStoriesStrip({ stories = [], currentUser }) {
 									<ChevronLeft className="h-4 w-4" />
 									Précédente
 								</button>
-								<p>
-									Story {activeStoryIndex + 1} / {activeGroup.stories.length}
+								<p className="flex items-center gap-3">
+									{activeStoryIndex + 1}
+									<span>/</span>
+									{activeGroup.stories.length}
 								</p>
 								<button
 									type="button"

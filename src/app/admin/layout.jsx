@@ -14,7 +14,10 @@ export default async function AdminLayout({ children }) {
 	const communityEnabled = await getCommunityEnabled();
 
 	return (
-		<NotificationsProviderWithToasts enabled={communityEnabled}>
+		<NotificationsProviderWithToasts
+			enabled={communityEnabled}
+			userId={session.user.id}
+		>
 			<AdminSidebar user={session.user}>{children}</AdminSidebar>
 		</NotificationsProviderWithToasts>
 	);

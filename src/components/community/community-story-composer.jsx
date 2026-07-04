@@ -31,18 +31,23 @@ export function CommunityStoryComposer({ user, onSuccess }) {
 		if (!file) return;
 
 		setUploadingImage(true);
-		const formData = new FormData();
-		formData.set("file", file);
-		const result = await uploadCommunityStoryImage(formData);
-		setUploadingImage(false);
+		try {
+			const formData = new FormData();
+			formData.set("file", file);
+			const result = await uploadCommunityStoryImage(formData);
 
-		if (result?.error) {
-			toast.error(result.error);
-			return;
+			if (result?.error) {
+				toast.error(result.error);
+				return;
+			}
+
+			setImageUrl(result.url || "");
+			toast.success("Image ajoutée à la story");
+		} catch {
+			toast.error("Impossible d'envoyer l'image pour le moment");
+		} finally {
+			setUploadingImage(false);
 		}
-
-		setImageUrl(result.url || "");
-		toast.success("Image ajoutée à la story");
 	}
 
 	function clearImage() {
@@ -54,23 +59,28 @@ export function CommunityStoryComposer({ user, onSuccess }) {
 
 	async function handleSubmit(formData) {
 		setSubmitting(true);
-		formData.set("imageUrl", imageUrl);
+		try {
+			formData.set("imageUrl", imageUrl);
 
-		const result = await createCommunityStory(formData);
-		setSubmitting(false);
+			const result = await createCommunityStory(formData);
 
-		if (result?.error) {
-			toast.error(result.error);
-			return;
+			if (result?.error) {
+				toast.error(result.error);
+				return;
+			}
+
+			setImageUrl("");
+			if (fileInputRef.current) {
+				fileInputRef.current.value = "";
+			}
+			formRef.current?.reset();
+			onSuccess?.();
+			toast.success("Story publiée pendant 24 h");
+		} catch {
+			toast.error("Impossible de publier la story pour le moment");
+		} finally {
+			setSubmitting(false);
 		}
-
-		setImageUrl("");
-		if (fileInputRef.current) {
-			fileInputRef.current.value = "";
-		}
-		formRef.current?.reset();
-		onSuccess?.();
-		toast.success("Story publiée pendant 24 h");
 	}
 
 	return (
@@ -79,12 +89,15 @@ export function CommunityStoryComposer({ user, onSuccess }) {
 			action={handleSubmit}
 			className="space-y-3"
 		>
+			{/* STORY HEADER: AVATAR + CONTENT */}
 			<div className="flex items-start gap-3">
+				{/* AVATAR */}
 				<Avatar className="mt-0.5 h-11 w-11">
 					<AvatarImage src={user?.image || ""} />
 					<AvatarFallback>{initials}</AvatarFallback>
 				</Avatar>
 
+				{/* STORY CONTENT INPUT */}
 				<div className="min-w-0 flex-1 rounded-3xl border bg-neutral-100 p-3.5 shadow-inner">
 					<Textarea
 						name="content"
@@ -113,8 +126,10 @@ export function CommunityStoryComposer({ user, onSuccess }) {
 				</div>
 			</div>
 
+			{/* STORY ACTION BUTTONS */}
 			<div className="flex items-center justify-end gap-2 pt-1">
 				<div className="flex items-center gap-2">
+					{/* IMAGE UPLOAD BUTTON */}
 					<button
 						type="button"
 						className="h-fit w-fit cursor-pointer rounded-full border-0 p-0"
@@ -149,6 +164,7 @@ export function CommunityStoryComposer({ user, onSuccess }) {
 					/>
 				</div>
 
+				{/* STORY SUBMIT BUTTON */}
 				<Button
 					type="submit"
 					className="rounded-full"

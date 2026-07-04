@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 function getInitialState() {
+	// Guard SSR: browser-only APIs are unavailable on the server render pass.
 	if (typeof window === "undefined") {
 		return { isOnline: true, isVisible: true };
 	}
@@ -37,11 +38,13 @@ export function CommunityMessagesLiveIndicator() {
 	}, []);
 
 	const isLive = state.isOnline && state.isVisible;
+	// Labels intentionally stay short to avoid header jitter on smaller breakpoints.
 	const label = !state.isOnline ? "Hors ligne" : !state.isVisible ? "Pause" : "En direct";
 	const helper = !state.isOnline ? "Reprise auto" : !state.isVisible ? "Connection lente" : "";
 	const dotClass = !state.isOnline ? "bg-destructive" : !state.isVisible ? "bg-amber-500" : "bg-emerald-500 animate-pulse";
 
 	return (
+		/* LIVE STATUS CHIP */
 		<div
 			className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-muted/40 px-2.5 py-1 text-[11px] text-muted-foreground"
 			title={helper}

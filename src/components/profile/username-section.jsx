@@ -17,10 +17,8 @@ export function UsernameSection({ user, publicEnabled, onPublicChange }) {
 	const [saving, setSaving] = useState(false);
 	const [copied, setCopied] = useState(false);
 
-	const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://academy.aeriavoyages.com";
 	const currentUsername = username.trim();
-
-	const profileUrl = currentUsername ? `${baseUrl}/users/${currentUsername}` : null;
+	const profilePath = currentUsername ? `/users/${currentUsername}` : null;
 
 	async function handleSave() {
 		setSaving(true);
@@ -41,8 +39,9 @@ export function UsernameSection({ user, publicEnabled, onPublicChange }) {
 	}
 
 	async function handleCopy() {
-		if (!profileUrl) return;
-		await navigator.clipboard.writeText(profileUrl);
+		if (!profilePath) return;
+		const absoluteUrl = `${window.location.origin}${profilePath}`;
+		await navigator.clipboard.writeText(absoluteUrl);
 		setCopied(true);
 		setTimeout(() => setCopied(false), 2000);
 	}
@@ -100,11 +99,11 @@ export function UsernameSection({ user, publicEnabled, onPublicChange }) {
 				</div>
 
 				{/* URL de partage */}
-				{profileUrl && (
+				{profilePath && (
 					<div className="rounded-md border bg-muted/30 p-3 space-y-2">
 						<p className="text-xs font-medium text-muted-foreground">Ton URL publique</p>
 						<div className="flex items-center gap-2">
-							<code className="flex-1 text-xs px-2 py-1.5 rounded bg-background break-all">{profileUrl}</code>
+							<code className="flex-1 text-xs px-2 py-1.5 rounded bg-background break-all">{profilePath}</code>
 							<Button
 								type="button"
 								variant="ghost"
@@ -122,7 +121,7 @@ export function UsernameSection({ user, publicEnabled, onPublicChange }) {
 								title="Voir"
 							>
 								<a
-									href={profileUrl}
+									href={profilePath}
 									target="_blank"
 									rel="noopener noreferrer"
 								>

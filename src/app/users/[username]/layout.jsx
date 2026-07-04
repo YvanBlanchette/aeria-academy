@@ -28,7 +28,10 @@ export default async function PublicUserLayout({ children, params }) {
 	const profileSlug = targetUser.username || username;
 
 	return (
-		<NotificationsProviderWithToasts enabled={notificationsEnabled}>
+		<NotificationsProviderWithToasts
+			enabled={notificationsEnabled}
+			userId={session?.user?.id || null}
+		>
 			<SocialShell tabs={buildSocialTabs(profileSlug)}>{children}</SocialShell>
 		</NotificationsProviderWithToasts>
 	);

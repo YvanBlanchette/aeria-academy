@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { canAccessCourse } from "@/lib/access";
 import { LearnShell } from "@/components/users/learn-shell";
 import { UserWatermark } from "@/components/users/user-watermark";
+import { NotificationsProviderWithToasts } from "@/features/community/notifications/notifications-provider-with-toasts";
 
 export default async function LearnLayout({ children, params }) {
 	const { courseId } = await params;
@@ -72,14 +73,16 @@ export default async function LearnLayout({ children, params }) {
 	const sidebarOpen = isMobile ? false : cookieValue !== "false";
 
 	return (
-		<LearnShell
-			course={course}
-			completedSet={completedSet}
-			defaultOpen={sidebarOpen}
-			session={{ ...session, user: freshUser || session.user }}
-		>
-			<UserWatermark user={freshUser || session.user} />
-			{children}
-		</LearnShell>
+		<NotificationsProviderWithToasts userId={session.user.id}>
+			<LearnShell
+				course={course}
+				completedSet={completedSet}
+				defaultOpen={sidebarOpen}
+				session={{ ...session, user: freshUser || session.user }}
+			>
+				<UserWatermark user={freshUser || session.user} />
+				{children}
+			</LearnShell>
+		</NotificationsProviderWithToasts>
 	);
 }

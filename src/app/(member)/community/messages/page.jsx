@@ -11,10 +11,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { CommunityMessageComposer } from "@/components/community/community-message-composer";
-import { CommunityMessageDeleteButton } from "@/components/community/community-message-delete-button";
-import { CommunityMessageReactionPickerButton, CommunityMessageReactions } from "@/components/community/community-message-reactions";
+import { CommunityMessageActionsMenu } from "@/components/community/community-message-actions-menu";
+import { CommunityMessageReactions } from "@/components/community/community-message-reactions";
 import { CommunityMessagesLiveIndicator } from "@/components/community/community-messages-live-indicator";
 import { CommunityMessagesPoller } from "@/components/community/community-messages-poller";
+import { CommunityMessagesAutoScroll } from "@/components/community/community-messages-auto-scroll";
 import { findOrCreateCommunityConversationForUsers } from "./actions";
 import { BiSolidMessageRoundedDetail } from "react-icons/bi";
 
@@ -22,6 +23,8 @@ export const metadata = {
 	title: "Messages | Communauté ÆRIA",
 	description: "Messagerie privée de la communauté ÆRIA",
 };
+
+const MESSAGE_BATCH_SIZE = 80;
 
 function initialsFromName(name, email) {
 	return (name || email || "U")
@@ -43,6 +46,33 @@ function normalizeId(value) {
 	return trimmed ? trimmed : null;
 }
 
+function parseBeforeCursor(value) {
+	if (!value) return null;
+	const candidate = new Date(value);
+	return Number.isNaN(candidate.getTime()) ? null : candidate;
+}
+
+function getProfileHref(user) {
+	const slug = user?.username || user?.id;
+	if (!slug) return null;
+	return `/users/${encodeURIComponent(slug)}`;
+}
+
+function parseSerializedAttachmentField(value) {
+	// Backward-compatible parser: old rows store a single string, newer rows store JSON arrays.
+	if (!value || typeof value !== "string") return [];
+	const trimmed = value.trim();
+	if (!trimmed) return [];
+	if (!trimmed.startsWith("[")) return [trimmed];
+
+	try {
+		const parsed = JSON.parse(trimmed);
+		return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string" && item.trim().length > 0) : [];
+	} catch {
+		return [trimmed];
+	}
+}
+
 function getOtherParticipant(conversation, userId) {
 	return conversation.participantAId === userId ? conversation.participantB : conversation.participantA;
 }
@@ -51,22 +81,17 @@ function getReadAt(conversation, userId) {
 	return conversation.participantAId === userId ? conversation.participantALastReadAt : conversation.participantBLastReadAt;
 }
 
-function getUnreadCount(conversation, userId) {
-	const readAt = getReadAt(conversation, userId);
-	const latestRead = readAt ? new Date(readAt).getTime() : 0;
-	return conversation.messages.reduce((count, message) => {
-		if (message.senderId === userId) return count;
-		return new Date(message.createdAt).getTime() > latestRead ? count + 1 : count;
-	}, 0);
-}
-
 function getPreviewMessage(conversation, userId) {
 	const latestMessage = conversation.messages[0];
 	if (!latestMessage) return "Démarre la conversation";
 	if (latestMessage.deletedAt) return "Message effacé";
-	if (latestMessage.attachmentName) {
+	const attachmentNames = parseSerializedAttachmentField(latestMessage.attachmentName);
+	if (attachmentNames.length > 0) {
 		const prefix = latestMessage.senderId === userId ? "Vous: " : "";
-		return `${prefix}Pièce jointe: ${latestMessage.attachmentName}`;
+		if (attachmentNames.length === 1) {
+			return `${prefix}Pièce jointe: ${attachmentNames[0]}`;
+		}
+		return `${prefix}${attachmentNames.length} pièces jointes`;
 	}
 	if (!latestMessage.content) return "Pièce jointe";
 	return latestMessage.senderId === userId ? `Vous: ${latestMessage.content}` : latestMessage.content;
@@ -93,7 +118,9 @@ function getConversationPresence(conversation, userId) {
 		return { isOnline: false, label: "Hors ligne" };
 	}
 
-	const lastPartnerMessage = [...conversation.messages].reverse().find((message) => message.senderId !== userId);
+	const lastPartnerMessage = (conversation.messages || [])
+		.filter((message) => message.senderId !== userId)
+		.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
 	if (!lastPartnerMessage?.createdAt) {
 		return { isOnline: false, label: "Hors ligne" };
@@ -116,56 +143,97 @@ function getConversationPresence(conversation, userId) {
 
 function ConversationItem({ conversation, userId, selectedConversationId }) {
 	const other = getOtherParticipant(conversation, userId);
-	const unreadCount = getUnreadCount(conversation, userId);
+	const unreadCount = conversation.unreadCount || 0;
 	const isSelected = conversation.id === selectedConversationId;
 	const initials = initialsFromName(other?.name, other?.email);
+	const profileHref = getProfileHref(other);
+	const conversationHref = `/community/messages?conversation=${conversation.id}`;
 
 	return (
-		<Link
-			href={`/community/messages?conversation=${conversation.id}`}
+		<div
 			className={`flex items-center gap-3 rounded-2xl border p-3 transition-all ${
 				isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-transparent bg-muted/40 hover:border-border hover:bg-muted"
 			}`}
 		>
-			<Avatar className="h-12 w-12 shrink-0">
-				<AvatarImage src={other?.image || ""} />
-				<AvatarFallback>{initials}</AvatarFallback>
-			</Avatar>
+			{profileHref ? (
+				<Link
+					href={profileHref}
+					className="shrink-0 rounded-full transition-all hover:opacity-90 hover:ring-2 hover:ring-primary/25"
+				>
+					<Avatar className="h-12 w-12">
+						<AvatarImage src={other?.image || ""} />
+						<AvatarFallback>{initials}</AvatarFallback>
+					</Avatar>
+				</Link>
+			) : (
+				<Avatar className="h-12 w-12 shrink-0">
+					<AvatarImage src={other?.image || ""} />
+					<AvatarFallback>{initials}</AvatarFallback>
+				</Avatar>
+			)}
 
 			<div className="min-w-0 flex-1">
 				<div className="flex items-center justify-between gap-2">
-					<p className="truncate font-medium">{other?.name || other?.email}</p>
+					{profileHref ? (
+						<Link
+							href={profileHref}
+							className="truncate font-medium transition-colors hover:text-primary hover:underline"
+						>
+							{other?.name || other?.email}
+						</Link>
+					) : (
+						<p className="truncate font-medium">{other?.name || other?.email}</p>
+					)}
 					{conversation.lastMessageAt ? (
 						<span className="shrink-0 text-[11px] text-muted-foreground">{formatSocialRelativeTime(conversation.lastMessageAt)}</span>
 					) : null}
 				</div>
-				<p className="line-clamp-1 text-sm text-muted-foreground">{getPreviewMessage(conversation, userId)}</p>
+				<Link
+					href={conversationHref}
+					className="line-clamp-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+				>
+					{getPreviewMessage(conversation, userId)}
+				</Link>
 			</div>
 
 			{unreadCount > 0 ? <Badge className="shrink-0 rounded-full">{unreadCount}</Badge> : null}
-		</Link>
+		</div>
 	);
 }
 
 function SearchResultItem({ user }) {
 	const initials = initialsFromName(user.name, user.email);
 	const messageHref = `/community/messages?composeTo=${encodeURIComponent(user.username || user.id)}`;
+	const profileHref = getProfileHref(user);
 
 	return (
 		<div className="flex items-center gap-3 rounded-2xl border bg-white p-3 transition-all hover:border-border hover:shadow-sm">
-			<Link
-				href={messageHref}
-				className="flex min-w-0 flex-1 items-center gap-3"
-			>
-				<Avatar className="h-11 w-11 shrink-0">
-					<AvatarImage src={user.image || ""} />
-					<AvatarFallback>{initials}</AvatarFallback>
-				</Avatar>
-				<div className="min-w-0 flex-1">
-					<p className="truncate font-medium">{user.name || user.email}</p>
-					<p className="truncate text-sm text-muted-foreground">{user.profile?.jobTitle || user.email}</p>
+			{profileHref ? (
+				<Link
+					href={profileHref}
+					className="flex min-w-0 flex-1 items-center gap-3"
+				>
+					<Avatar className="h-11 w-11 shrink-0">
+						<AvatarImage src={user.image || ""} />
+						<AvatarFallback>{initials}</AvatarFallback>
+					</Avatar>
+					<div className="min-w-0 flex-1">
+						<p className="truncate font-medium transition-colors hover:text-primary hover:underline">{user.name || user.email}</p>
+						<p className="truncate text-sm text-muted-foreground">{user.profile?.jobTitle || user.email}</p>
+					</div>
+				</Link>
+			) : (
+				<div className="flex min-w-0 flex-1 items-center gap-3">
+					<Avatar className="h-11 w-11 shrink-0">
+						<AvatarImage src={user.image || ""} />
+						<AvatarFallback>{initials}</AvatarFallback>
+					</Avatar>
+					<div className="min-w-0 flex-1">
+						<p className="truncate font-medium">{user.name || user.email}</p>
+						<p className="truncate text-sm text-muted-foreground">{user.profile?.jobTitle || user.email}</p>
+					</div>
 				</div>
-			</Link>
+			)}
 			<Button
 				asChild
 				variant="outline"
@@ -178,6 +246,7 @@ function SearchResultItem({ user }) {
 }
 
 export default async function CommunityMessagesPage({ searchParams }) {
+	// Guard route access at the server boundary to avoid rendering private state to guests.
 	const session = await auth();
 	if (!session?.user?.id) redirect("/login?callbackUrl=/community/messages");
 	const communityEnabled = await getCommunityEnabled();
@@ -189,6 +258,7 @@ export default async function CommunityMessagesPage({ searchParams }) {
 	const searchQuery = normalizeText(resolvedSearchParams?.q);
 	const selectedConversationId = normalizeId(resolvedSearchParams?.conversation);
 	const composeTo = normalizeId(resolvedSearchParams?.composeTo);
+	const beforeCursorDate = parseBeforeCursor(normalizeText(resolvedSearchParams?.before));
 
 	let conversationToOpen = null;
 	let composeTarget = null;
@@ -225,6 +295,7 @@ export default async function CommunityMessagesPage({ searchParams }) {
 	}
 
 	const initialConversations = await prisma.communityConversation.findMany({
+		// First pass fetch is used to resolve the active conversation id and mark read state.
 		where: {
 			OR: [{ participantAId: userId }, { participantBId: userId }],
 		},
@@ -242,6 +313,7 @@ export default async function CommunityMessagesPage({ searchParams }) {
 
 	let conversationIdToOpen = conversationToOpen?.id || selectedConversationId || initialConversations[0]?.id || null;
 	if (conversationIdToOpen) {
+		// Mark thread as read as soon as it becomes active for the current user.
 		const now = new Date();
 		const selectedConversation = initialConversations.find((conversation) => conversation.id === conversationIdToOpen);
 		if (!selectedConversation) {
@@ -269,6 +341,7 @@ export default async function CommunityMessagesPage({ searchParams }) {
 	}
 
 	const [conversations, selectedConversation, searchResults] = await Promise.all([
+		// Parallel fetch keeps the page responsive even when search is active.
 		prisma.communityConversation.findMany({
 			where: {
 				OR: [{ participantAId: userId }, { participantBId: userId }],
@@ -294,10 +367,11 @@ export default async function CommunityMessagesPage({ searchParams }) {
 						participantA: { select: { id: true, name: true, email: true, image: true, username: true } },
 						participantB: { select: { id: true, name: true, email: true, image: true, username: true } },
 						messages: {
-							orderBy: { createdAt: "asc" },
-							take: 80,
+							orderBy: { createdAt: "desc" },
+							take: MESSAGE_BATCH_SIZE,
+							...(beforeCursorDate ? { where: { createdAt: { lt: beforeCursorDate } } } : {}),
 							include: {
-								sender: { select: { id: true, name: true, email: true, image: true } },
+								sender: { select: { id: true, name: true, email: true, image: true, username: true } },
 								reactions: {
 									select: {
 										emoji: true,
@@ -334,20 +408,30 @@ export default async function CommunityMessagesPage({ searchParams }) {
 			: Promise.resolve([]),
 	]);
 
-	const conversationsWithUnread = await Promise.all(
-		conversations.map(async (conversation) => {
-			const readAt = conversation.participantAId === userId ? conversation.participantALastReadAt : conversation.participantBLastReadAt;
-			const unreadCount = await prisma.communityMessage.count({
-				where: {
-					conversationId: conversation.id,
-					senderId: { not: userId },
-					...(readAt ? { createdAt: { gt: readAt } } : {}),
-				},
-			});
+	const unreadRows = await prisma.$queryRaw`
+		SELECT
+			c.id AS "conversationId",
+			COUNT(m.id)::int AS "unreadCount"
+		FROM "CommunityConversation" c
+		LEFT JOIN "CommunityMessage" m
+			ON m."conversationId" = c.id
+			AND m."senderId" <> ${userId}
+			AND m."createdAt" > (
+				CASE
+					WHEN c."participantAId" = ${userId} THEN COALESCE(c."participantALastReadAt", TO_TIMESTAMP(0))
+					ELSE COALESCE(c."participantBLastReadAt", TO_TIMESTAMP(0))
+				END
+			)
+		WHERE c."participantAId" = ${userId} OR c."participantBId" = ${userId}
+		GROUP BY c.id
+	`;
 
-			return { ...conversation, unreadCount };
-		}),
-	);
+	const unreadCountByConversationId = new Map((unreadRows || []).map((row) => [row.conversationId, Number(row.unreadCount || 0)]));
+
+	const conversationsWithUnread = conversations.map((conversation) => ({
+		...conversation,
+		unreadCount: unreadCountByConversationId.get(conversation.id) || 0,
+	}));
 
 	const activeConversation =
 		selectedConversation ||
@@ -361,10 +445,11 @@ export default async function CommunityMessagesPage({ searchParams }) {
 						participantA: { select: { id: true, name: true, email: true, image: true, username: true } },
 						participantB: { select: { id: true, name: true, email: true, image: true, username: true } },
 						messages: {
-							orderBy: { createdAt: "asc" },
-							take: 80,
+							orderBy: { createdAt: "desc" },
+							take: MESSAGE_BATCH_SIZE,
+							...(beforeCursorDate ? { where: { createdAt: { lt: beforeCursorDate } } } : {}),
 							include: {
-								sender: { select: { id: true, name: true, email: true, image: true } },
+								sender: { select: { id: true, name: true, email: true, image: true, username: true } },
 								reactions: {
 									select: {
 										emoji: true,
@@ -379,12 +464,33 @@ export default async function CommunityMessagesPage({ searchParams }) {
 			: null);
 
 	const activePartner = activeConversation ? getOtherParticipant(activeConversation, userId) : null;
+	// Normalize current window to oldest -> newest for stable rendering and presence logic.
+	const activeConversationMessages = activeConversation?.messages
+		? [...activeConversation.messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+		: [];
+	const oldestLoadedMessage = activeConversationMessages.length > 0 ? activeConversationMessages[0] : null;
+	const hasOlderMessages =
+		activeConversation && oldestLoadedMessage
+			? (await prisma.communityMessage.count({
+					where: {
+						conversationId: activeConversation.id,
+						createdAt: { lt: oldestLoadedMessage.createdAt },
+					},
+				})) > 0
+			: false;
+	const loadOlderHref =
+		activeConversation && oldestLoadedMessage
+			? `/community/messages?conversation=${encodeURIComponent(activeConversation.id)}&before=${encodeURIComponent(
+					new Date(oldestLoadedMessage.createdAt).toISOString(),
+				)}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`
+			: null;
 	const activeInitials = initialsFromName(activePartner?.name, activePartner?.email);
+	const activePartnerProfileHref = getProfileHref(activePartner);
 	const presence = getConversationPresence(activeConversation, userId);
 
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-			<CommunityMessagesPoller />
+			<CommunityMessagesPoller userId={userId} />
 			<div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
 				{/* MESSAGE LIST */}
 				<Card className="overflow-hidden rounded-3xl border-0 bg-white shadow-sm">
@@ -461,12 +567,35 @@ export default async function CommunityMessagesPage({ searchParams }) {
 							<CardHeader className="border-b shadow-sm">
 								<div className="flex items-center justify-between gap-3">
 									<div className="flex min-w-0 items-center gap-3">
-										<Avatar className="h-12 w-12 shrink-0">
-											<AvatarImage src={activePartner.image || ""} />
-											<AvatarFallback>{activeInitials}</AvatarFallback>
-										</Avatar>
+										{activePartnerProfileHref ? (
+											<Link
+												href={activePartnerProfileHref}
+												className="shrink-0 rounded-full transition-all hover:opacity-90 hover:ring-2 hover:ring-primary/25"
+											>
+												<Avatar className="h-12 w-12">
+													<AvatarImage src={activePartner.image || ""} />
+													<AvatarFallback>{activeInitials}</AvatarFallback>
+												</Avatar>
+											</Link>
+										) : (
+											<Avatar className="h-12 w-12 shrink-0">
+												<AvatarImage src={activePartner.image || ""} />
+												<AvatarFallback>{activeInitials}</AvatarFallback>
+											</Avatar>
+										)}
 										<div className="min-w-0">
-											<CardTitle className="truncate text-base">{activePartner.name || activePartner.email}</CardTitle>
+											{activePartnerProfileHref ? (
+												<CardTitle className="truncate text-base">
+													<Link
+														href={activePartnerProfileHref}
+														className="transition-colors hover:text-primary hover:underline"
+													>
+														{activePartner.name || activePartner.email}
+													</Link>
+												</CardTitle>
+											) : (
+												<CardTitle className="truncate text-base">{activePartner.name || activePartner.email}</CardTitle>
+											)}
 											<div className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
 												<span className={`h-1.5 w-1.5 rounded-full ${presence.isOnline ? "bg-emerald-500" : "bg-muted-foreground/50"}`} />
 												<span className="truncate">{presence.label}</span>
@@ -486,122 +615,165 @@ export default async function CommunityMessagesPage({ searchParams }) {
 							</CardHeader>
 
 							<CardContent className="flex h-[calc(100vh-15rem)] flex-col p-0">
-								<div className="flex-1 space-y-3 overflow-y-auto p-4 sm:px-6">
-									{activeConversation.messages.length > 0 ? (
-										activeConversation.messages.map((message) => {
-											const isMine = message.senderId === userId;
-											const isDeleted = Boolean(message.deletedAt);
-											const hasAttachment = Boolean(message.attachmentUrl);
-											const isAttachmentImage = hasAttachment && message.attachmentMimeType?.startsWith("image/");
-											const senderInitials = initialsFromName(message.sender.name, message.sender.email);
+								<CommunityMessagesAutoScroll
+									containerId="community-messages-scroll-container"
+									conversationId={activeConversation.id}
+									messageCount={activeConversationMessages.length}
+								/>
+								<div
+									id="community-messages-scroll-container"
+									className="flex-1 space-y-3 overflow-y-auto p-4 sm:px-6"
+								>
+									{activeConversationMessages.length > 0 ? (
+										<>
+											{hasOlderMessages && loadOlderHref ? (
+												<div className="flex justify-center pb-2">
+													<Button
+														asChild
+														variant="outline"
+														size="sm"
+														className="rounded-full"
+													>
+														<Link href={loadOlderHref}>Charger les messages plus anciens</Link>
+													</Button>
+												</div>
+											) : null}
+											{activeConversationMessages.map((message) => {
+												const isMine = message.senderId === userId;
+												const isDeleted = Boolean(message.deletedAt);
+												const attachmentUrls = parseSerializedAttachmentField(message.attachmentUrl);
+												const attachmentNames = parseSerializedAttachmentField(message.attachmentName);
+												const attachmentMimeTypes = parseSerializedAttachmentField(message.attachmentMimeType);
+												const hasAttachment = attachmentUrls.length > 0;
+												const senderInitials = initialsFromName(message.sender.name, message.sender.email);
+												const senderProfileHref = getProfileHref(message.sender);
 
-											return (
-												<div
-													key={message.id}
-													className={`flex ${isMine ? "justify-end" : "justify-start"}`}
-												>
-													<div className={`group/message flex max-w-[80%] items-end gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
-														<Avatar className="h-8 w-8 shrink-0">
-															<AvatarImage src={message.sender.image || ""} />
-															<AvatarFallback>{senderInitials}</AvatarFallback>
-														</Avatar>
-														{!isDeleted ? (
-															<div
-																className={`flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/message:opacity-100 ${
-																	isMine ? "order-2 mr-1" : "order-1 ml-1"
-																}`}
-															>
-																<CommunityMessageReactionPickerButton
-																	messageId={message.id}
-																	isMine={isMine}
-																/>
-																{isMine ? (
-																	<CommunityMessageDeleteButton
-																		messageId={message.id}
-																		isMine={isMine}
-																	/>
-																) : null}
-															</div>
-														) : null}
-														<div className="relative pb-4">
-															<div
-																className={`rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
-																	isMine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
-																}`}
-															>
-																{isDeleted ? (
-																	<p className="italic opacity-80">{formatDeletedMessageLabel(message.deletedAt)}</p>
-																) : (
-																	<>
-																		{message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : null}
-																		{hasAttachment ? (
-																			<div
-																				className={`mt-2 rounded-xl border ${isMine ? "border-primary-foreground/20 bg-primary-foreground/10" : "border-border bg-background/80"}`}
-																			>
-																				{isAttachmentImage ? (
-																					<a
-																						href={message.attachmentUrl}
-																						target="_blank"
-																						rel="noreferrer"
-																						className="block"
-																					>
-																						<img
-																							src={message.attachmentUrl}
-																							alt={message.attachmentName || "Image jointe"}
-																							className="max-h-56 w-full rounded-t-xl object-cover"
-																						/>
-																					</a>
-																				) : null}
-																				<div className="flex items-center justify-between gap-3 p-3">
-																					<div className="min-w-0">
-																						<div className="inline-flex items-center gap-1.5 text-xs font-medium">
-																							{isAttachmentImage ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
-																							<span className="truncate">{message.attachmentName || "Pièce jointe"}</span>
-																						</div>
-																						{message.attachmentMimeType || message.attachmentSize ? (
-																							<p className="mt-1 truncate text-[11px] opacity-80">
-																								{message.attachmentMimeType || "Fichier"}
-																								{message.attachmentSize ? ` • ${formatAttachmentSize(message.attachmentSize)}` : ""}
-																							</p>
-																						) : null}
-																					</div>
-																					<a
-																						href={message.attachmentUrl}
-																						target="_blank"
-																						rel="noreferrer"
-																						className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${isMine ? "border-primary-foreground/30" : "border-border"}`}
-																					>
-																						<Download className="h-3.5 w-3.5" />
-																						<span>Ouvrir</span>
-																					</a>
-																				</div>
-																			</div>
-																		) : null}
-																	</>
-																)}
-																<p className={`mt-1 text-[11px] ${isMine ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
-																	{formatSocialRelativeTime(message.createdAt)}
-																</p>
-															</div>
+												return (
+													<div
+														key={message.id}
+														className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+													>
+														<div className={`group/message flex max-w-[80%] items-end gap-2 ${isMine ? "flex-row-reverse" : "flex-row"}`}>
+															{senderProfileHref ? (
+																<Link
+																	href={senderProfileHref}
+																	className="shrink-0 rounded-full transition-all hover:opacity-90 hover:ring-2 hover:ring-primary/25"
+																>
+																	<Avatar className="h-8 w-8">
+																		<AvatarImage src={message.sender.image || ""} />
+																		<AvatarFallback>{senderInitials}</AvatarFallback>
+																	</Avatar>
+																</Link>
+															) : (
+																<Avatar className="h-8 w-8 shrink-0">
+																	<AvatarImage src={message.sender.image || ""} />
+																	<AvatarFallback>{senderInitials}</AvatarFallback>
+																</Avatar>
+															)}
 															{!isDeleted ? (
-																<div className={`pointer-events-none absolute -bottom-0.5 ${isMine ? "right-3" : "left-3"}`}>
-																	<CommunityMessageReactions
+																<div
+																	className={`flex items-center gap-1 opacity-0 transition-opacity duration-150 group-hover/message:opacity-100 group-focus-within/message:opacity-100 ${
+																		isMine ? "order-2 mr-1" : "order-1 ml-1"
+																	}`}
+																>
+																	<CommunityMessageActionsMenu
 																		messageId={message.id}
-																		reactions={(message.reactions || []).map((reaction) => ({
-																			emoji: reaction.emoji,
-																			userId: reaction.userId,
-																			userName: reaction.user?.name || reaction.user?.email || "Membre",
-																		}))}
-																		currentUserId={userId}
 																		isMine={isMine}
 																	/>
 																</div>
 															) : null}
+															<div className="relative pb-4">
+																<div
+																	className={`min-w-[150px] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+																		isMine ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"
+																	}`}
+																>
+																	{isDeleted ? (
+																		<p className="italic opacity-80">{formatDeletedMessageLabel(message.deletedAt)}</p>
+																	) : (
+																		<>
+																			{message.content ? <p className="whitespace-pre-wrap">{message.content}</p> : null}
+																			{hasAttachment ? (
+																				<div className="mt-2 space-y-2">
+																					{attachmentUrls.map((attachmentUrl, index) => {
+																						const attachmentName = attachmentNames[index] || attachmentNames[0] || `Pièce jointe ${index + 1}`;
+																						const attachmentMimeType = attachmentMimeTypes[index] || attachmentMimeTypes[0] || "";
+																						const isAttachmentImage = attachmentMimeType.startsWith("image/");
+
+																						return (
+																							<div
+																								key={`${message.id}-attachment-${index}`}
+																								className={`rounded-xl border ${isMine ? "border-primary-foreground/20 bg-primary-foreground/10" : "border-border bg-background/80"}`}
+																							>
+																								{isAttachmentImage ? (
+																									<a
+																										href={attachmentUrl}
+																										target="_blank"
+																										rel="noreferrer"
+																										className="block"
+																									>
+																										{/* eslint-disable-next-line @next/next/no-img-element */}
+																										<img
+																											src={attachmentUrl}
+																											alt={attachmentName || "Image jointe"}
+																											className="max-h-56 w-full rounded-t-xl object-cover"
+																										/>
+																									</a>
+																								) : null}
+																								<div className="flex items-center justify-between gap-3 p-3">
+																									<div className="min-w-0">
+																										<div className="inline-flex items-center gap-1.5 text-xs font-medium">
+																											{isAttachmentImage ? <ImageIcon className="h-3.5 w-3.5" /> : <FileText className="h-3.5 w-3.5" />}
+																											<span className="truncate">{attachmentName}</span>
+																										</div>
+																										{attachmentMimeType || (index === 0 && message.attachmentSize) ? (
+																											<p className="mt-1 truncate text-[11px] opacity-80">
+																												{attachmentMimeType || "Fichier"}
+																												{index === 0 && message.attachmentSize ? ` • ${formatAttachmentSize(message.attachmentSize)}` : ""}
+																											</p>
+																										) : null}
+																									</div>
+																									<a
+																										href={attachmentUrl}
+																										target="_blank"
+																										rel="noreferrer"
+																										className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs ${isMine ? "border-primary-foreground/30" : "border-border"}`}
+																									>
+																										<Download className="h-3.5 w-3.5" />
+																										<span>Ouvrir</span>
+																									</a>
+																								</div>
+																							</div>
+																						);
+																					})}
+																				</div>
+																			) : null}
+																		</>
+																	)}
+																	<p className={`mt-1 text-[11px] ${isMine ? "text-primary-foreground/75" : "text-muted-foreground"}`}>
+																		{formatSocialRelativeTime(message.createdAt)}
+																	</p>
+																</div>
+																{!isDeleted ? (
+																	<div className={`pointer-events-none absolute -bottom-0.5 ${isMine ? "right-3" : "left-3"}`}>
+																		<CommunityMessageReactions
+																			messageId={message.id}
+																			reactions={(message.reactions || []).map((reaction) => ({
+																				emoji: reaction.emoji,
+																				userId: reaction.userId,
+																				userName: reaction.user?.name || reaction.user?.email || "Membre",
+																			}))}
+																			currentUserId={userId}
+																			isMine={isMine}
+																		/>
+																	</div>
+																) : null}
+															</div>
 														</div>
 													</div>
-												</div>
-											);
-										})
+												);
+											})}
+										</>
 									) : (
 										<div className="flex h-full items-center justify-center p-8 text-center text-muted-foreground">
 											<div className="space-y-2">

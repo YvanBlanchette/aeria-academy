@@ -14,6 +14,7 @@ import {
 	UserPlus,
 	BriefcaseBusiness,
 	GraduationCap,
+	Ellipsis,
 } from "lucide-react";
 import { FaFacebookF, FaLinkedinIn, FaInstagram, FaYoutube, FaXTwitter, FaTiktok } from "react-icons/fa6";
 import { auth } from "@/auth";
@@ -26,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { ProfileCoverControls } from "@/components/profile/profile-cover-controls";
 import { acceptFriendRequest, blockUser, cancelFriendRequest, declineFriendRequest, sendFriendRequest, unblockUser, unfriendUser } from "./actions";
 
@@ -340,52 +342,72 @@ export default async function PublicProfilePage({ params }) {
 										</Button>
 									</form>
 								) : isFriend ? (
-									<div className="flex flex-wrap items-center gap-2">
-										{canMessageTarget ? (
+									<DropdownMenu modal={false}>
+										<DropdownMenuTrigger asChild>
 											<Button
-												asChild
 												variant="outline"
+												size="icon"
+												className="rounded-full"
+												aria-label="Actions du profil"
 											>
-												<Link href={`/community/messages?composeTo=${encodeURIComponent(profileUsername)}`}>Message</Link>
+												<Ellipsis className="h-5 w-5" />
 											</Button>
-										) : null}
-										<form action={unfriendUser}>
-											<input
-												type="hidden"
-												name="targetUserId"
-												value={user.id}
-											/>
-											<input
-												type="hidden"
-												name="username"
-												value={profileUsername}
-											/>
-											<Button
-												type="submit"
-												variant="outline"
-											>
-												Retirer des amis
-											</Button>
-										</form>
-										<form action={blockUser}>
-											<input
-												type="hidden"
-												name="targetUserId"
-												value={user.id}
-											/>
-											<input
-												type="hidden"
-												name="username"
-												value={profileUsername}
-											/>
-											<Button
-												type="submit"
-												variant="outline"
-											>
-												Bloquer
-											</Button>
-										</form>
-									</div>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent
+											align="end"
+											className="w-56"
+										>
+											{canMessageTarget ? (
+												<DropdownMenuItem asChild>
+													<Link href={`/community/messages?composeTo=${encodeURIComponent(profileUsername)}`}>Message</Link>
+												</DropdownMenuItem>
+											) : null}
+											{canMessageTarget ? <DropdownMenuSeparator /> : null}
+											<form action={unfriendUser}>
+												<input
+													type="hidden"
+													name="targetUserId"
+													value={user.id}
+												/>
+												<input
+													type="hidden"
+													name="username"
+													value={profileUsername}
+												/>
+												<DropdownMenuItem asChild>
+													<button
+														type="submit"
+														className="w-full cursor-pointer text-left"
+													>
+														Retirer des amis
+													</button>
+												</DropdownMenuItem>
+											</form>
+											<form action={blockUser}>
+												<input
+													type="hidden"
+													name="targetUserId"
+													value={user.id}
+												/>
+												<input
+													type="hidden"
+													name="username"
+													value={profileUsername}
+												/>
+												<DropdownMenuItem
+													asChild
+													className="text-red-600 focus:text-red-600"
+												>
+													<button
+														type="submit"
+														className="w-full cursor-pointer text-left"
+													>
+														Bloquer
+													</button>
+												</DropdownMenuItem>
+											</form>
+										</DropdownMenuContent>
+									</DropdownMenu>
 								) : hasIncomingFriendRequest ? (
 									<div className="flex flex-wrap items-center gap-2">
 										<form action={acceptFriendRequest}>

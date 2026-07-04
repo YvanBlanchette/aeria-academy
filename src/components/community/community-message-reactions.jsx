@@ -1,7 +1,6 @@
 "use client";
 
 import { useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { SmilePlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -36,6 +35,7 @@ const PICKER_EMOJIS = [
 ];
 
 function groupReactions(reactions) {
+	// Aggregate identical emojis so each badge reflects count + participating users.
 	const map = new Map();
 	for (const reaction of reactions || []) {
 		const current = map.get(reaction.emoji) || { emoji: reaction.emoji, count: 0, userIds: new Set(), userNames: [] };
@@ -49,7 +49,6 @@ function groupReactions(reactions) {
 }
 
 function useMessageReactionActions() {
-	const router = useRouter();
 	const [isPending, startTransition] = useTransition();
 
 	function reactWith(emoji) {
@@ -58,6 +57,7 @@ function useMessageReactionActions() {
 			if (!messageId) return;
 
 			startTransition(async () => {
+				// Keep network contract compact and aligned with server action parser.
 				const formData = new FormData();
 				formData.set("messageId", messageId);
 				formData.set("emoji", emoji);
@@ -68,7 +68,7 @@ function useMessageReactionActions() {
 					return;
 				}
 
-				router.refresh();
+				window.dispatchEvent(new Event("community-messages:refresh-now"));
 			});
 		};
 	}
@@ -83,6 +83,7 @@ export function CommunityMessageReactions({ messageId, reactions, currentUserId,
 	if (grouped.length === 0) return null;
 
 	return (
+		/* REACTION BADGES */
 		<div className="pointer-events-auto flex flex-wrap items-center gap-1">
 			{grouped.map((item) => {
 				const reactedByMe = item.userIds.has(currentUserId);
@@ -117,20 +118,23 @@ export function CommunityMessageReactionPickerButton({ messageId, isMine }) {
 	const { isPending, reactWith } = useMessageReactionActions();
 
 	return (
+		/* REACTION PICKER */
 		<DropdownMenu modal={false}>
+			{/* PICKER TRIGGER */}
 			<DropdownMenuTrigger asChild>
 				<Button
 					type="button"
 					variant="ghost"
 					size="icon"
 					disabled={isPending}
-					className={`h-7 w-7 rounded-full ${isMine ? "text-primary-foreground/90 hover:bg-primary-foreground/15" : "text-muted-foreground hover:bg-muted"}`}
+					className="h-7 w-7 rounded-full text-foreground/80 hover:bg-muted"
 					aria-label="Réagir"
 					title="Réagir"
 				>
 					<SmilePlus className="h-4 w-4" />
 				</Button>
 			</DropdownMenuTrigger>
+			{/* PICKER CONTENT */}
 			<DropdownMenuContent
 				align={isMine ? "start" : "end"}
 				className="w-auto min-w-0"

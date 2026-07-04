@@ -74,7 +74,9 @@ export function CommunityNotificationsMenu() {
 	}
 
 	return (
+		/* NOTIFICATIONS DROPDOWN */
 		<DropdownMenu modal={false}>
+			{/* BELL TRIGGER */}
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<DropdownMenuTrigger asChild>
@@ -96,6 +98,7 @@ export function CommunityNotificationsMenu() {
 					<p>Notifications</p>
 				</TooltipContent>
 			</Tooltip>
+			{/* NOTIFICATIONS LIST */}
 			<DropdownMenuContent
 				align="end"
 				className="w-80"

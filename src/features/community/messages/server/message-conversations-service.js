@@ -2,10 +2,12 @@ import { prisma } from "@/lib/prisma";
 import { canUserMessageTarget } from "@/lib/social-graph";
 
 function normalizeConversationParticipants(participantAId, participantBId) {
+	// Stable ordering prevents duplicate rows for the same user pair.
 	return participantAId < participantBId ? [participantAId, participantBId] : [participantBId, participantAId];
 }
 
 export async function findOrCreateCommunityConversationForUsers(userId, otherUserId) {
+	// Validate target user and messaging permissions before exposing/creating conversation IDs.
 	const otherUser = await prisma.user.findUnique({
 		where: { id: otherUserId },
 		select: {

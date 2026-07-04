@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { cloneElement, isValidElement } from "react";
 
-import Footer from "@/features/marketing/components/footer";
-import Navigation from "@/features/marketing/components/navigation";
+import Footer from "@/components/footer";
+import Navigation from "@/components/navigation";
 import { getLocaleFromCookie } from "@/lib/locale";
 
 export const dynamic = "force-dynamic";

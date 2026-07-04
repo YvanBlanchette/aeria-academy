@@ -4,6 +4,7 @@ import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { triggerCommunityRealtimeUpdate } from "@/lib/pusher-server";
 import { normalizeFriendshipPair } from "@/lib/social-graph";
 
 const relationshipSchema = z.object({
@@ -136,6 +137,11 @@ export async function sendFriendRequest(formData) {
 			}),
 		]);
 
+		await triggerCommunityRealtimeUpdate({
+			userIds: [user.id, targetUserId],
+			reason: "notification.friend_accepted",
+		});
+
 		await revalidateRelationshipPaths(username);
 		return { success: true };
 	}
@@ -167,6 +173,11 @@ export async function sendFriendRequest(formData) {
 				},
 			}),
 		]);
+
+		await triggerCommunityRealtimeUpdate({
+			userIds: [targetUserId],
+			reason: "notification.friend_request",
+		});
 	} else if (outgoingRequest.status !== "PENDING") {
 		await prisma.$transaction([
 			prisma.userFriendRequest.update({
@@ -184,6 +195,11 @@ export async function sendFriendRequest(formData) {
 				},
 			}),
 		]);
+
+		await triggerCommunityRealtimeUpdate({
+			userIds: [targetUserId],
+			reason: "notification.friend_request",
+		});
 	}
 
 	await revalidateRelationshipPaths(username);
@@ -221,6 +237,11 @@ export async function cancelFriendRequest(formData) {
 			type: "FRIEND_REQUEST",
 			isRead: false,
 		},
+	});
+
+	await triggerCommunityRealtimeUpdate({
+		userIds: [targetUserId],
+		reason: "notification.friend_request_canceled",
 	});
 
 	await revalidateRelationshipPaths(username);
@@ -285,6 +306,11 @@ export async function acceptFriendRequest(formData) {
 		}),
 	]);
 
+	await triggerCommunityRealtimeUpdate({
+		userIds: [user.id, targetUserId],
+		reason: "notification.friend_accepted",
+	});
+
 	await revalidateRelationshipPaths(username);
 	return { success: true };
 }
@@ -319,6 +345,11 @@ export async function declineFriendRequest(formData) {
 			actorId: targetUserId,
 			type: "FRIEND_REQUEST",
 		},
+	});
+
+	await triggerCommunityRealtimeUpdate({
+		userIds: [user.id],
+		reason: "notification.friend_request_declined",
 	});
 
 	await revalidateRelationshipPaths(username);
@@ -364,6 +395,11 @@ export async function unfriendUser(formData) {
 			},
 		}),
 	]);
+
+	await triggerCommunityRealtimeUpdate({
+		userIds: [user.id, targetUserId],
+		reason: "notification.relationship_removed",
+	});
 
 	await revalidateRelationshipPaths(username);
 	return { success: true };
@@ -423,6 +459,11 @@ export async function blockUser(formData) {
 			},
 		}),
 	]);
+
+	await triggerCommunityRealtimeUpdate({
+		userIds: [user.id, targetUserId],
+		reason: "notification.user_blocked",
+	});
 
 	await revalidateRelationshipPaths(username);
 	return { success: true };

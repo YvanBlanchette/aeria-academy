@@ -122,7 +122,9 @@ export function AdminArticlesInfiniteTable({ initialData, queryString, storageKe
 									</div>
 								</TableCell>
 								<TableCell className="border text-center">
-									<Badge variant={tierColors[article.requiredTier]}>{article.requiredTier}</Badge>
+									<Badge variant={tierColors[article.requiredTier]}>
+										{article.requiredTier === "FREE" ? "Gratuit" : article.requiredTier === "ACADEMY" ? "Académie" : "Prime"}
+									</Badge>
 								</TableCell>
 								<TableCell className="border text-center">
 									<Badge variant={article.published ? "default" : "secondary"}>{article.published ? "Publié" : "Brouillon"}</Badge>

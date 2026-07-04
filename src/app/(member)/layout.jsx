@@ -18,7 +18,10 @@ export default async function UserLayout({ children }) {
 	if (!user) redirect("/login");
 
 	return (
-		<NotificationsProviderWithToasts enabled={communityEnabled}>
+		<NotificationsProviderWithToasts
+			enabled={communityEnabled}
+			userId={session.user.id}
+		>
 			<MemberLayoutSwitcher
 				user={user}
 				communityEnabled={communityEnabled}

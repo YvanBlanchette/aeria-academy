@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_LIMIT = 8;
-const DEFAULT_POLL_INTERVAL = 15000;
+const DEFAULT_POLL_INTERVAL = 60000;
+const DEFAULT_HIDDEN_POLL_INTERVAL = 180000;
 
 /**
  * Fetches community notifications, polls for updates, and exposes
@@ -16,10 +17,18 @@ const DEFAULT_POLL_INTERVAL = 15000;
  *                                                  never seen before (skipped on first load).
  *                                                  Use this for toasts / sounds / etc.
  */
-export function useFetchNotifications({ enabled = true, limit = DEFAULT_LIMIT, pollInterval = DEFAULT_POLL_INTERVAL, onNewNotifications } = {}) {
+export function useFetchNotifications({
+	enabled = true,
+	userId = null,
+	limit = DEFAULT_LIMIT,
+	pollInterval = DEFAULT_POLL_INTERVAL,
+	hiddenPollInterval = DEFAULT_HIDDEN_POLL_INTERVAL,
+	onNewNotifications,
+} = {}) {
 	const [notifications, setNotifications] = useState([]);
 	const [unreadCount, setUnreadCount] = useState(0);
-	const [isLoading, setIsLoading] = useState(true);
+	const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+	const [isLoadingState, setIsLoadingState] = useState(enabled);
 
 	const seenIdsRef = useRef(new Set());
 	const hasLoadedOnceRef = useRef(false);
@@ -59,11 +68,14 @@ export function useFetchNotifications({ enabled = true, limit = DEFAULT_LIMIT, p
 
 				setNotifications(next);
 				setUnreadCount(typeof payload.unreadCount === "number" ? payload.unreadCount : 0);
+				setUnreadMessageCount(
+					typeof payload.unreadMessageCount === "number" ? payload.unreadMessageCount : next.filter((item) => item.type === "MESSAGE" && !item.isRead).length,
+				);
 			} catch (error) {
 				if (error?.name === "AbortError") return;
 				// Network error: keep whatever we already have on screen.
 			} finally {
-				setIsLoading(false);
+				setIsLoadingState(false);
 			}
 		},
 		[limit],
@@ -75,9 +87,17 @@ export function useFetchNotifications({ enabled = true, limit = DEFAULT_LIMIT, p
 
 	const markAsRead = useCallback(async (notificationId) => {
 		// Optimistic update
+		let removedUnreadMessage = false;
 		locallyRemovedIdsRef.current.add(notificationId);
-		setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+		setNotifications((prev) => {
+			const target = prev.find((n) => n.id === notificationId);
+			removedUnreadMessage = Boolean(target && target.type === "MESSAGE" && !target.isRead);
+			return prev.filter((n) => n.id !== notificationId);
+		});
 		setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+		if (removedUnreadMessage) {
+			setUnreadMessageCount((prev) => (prev > 0 ? prev - 1 : 0));
+		}
 
 		try {
 			const response = await fetch("/api/community/notifications", {
@@ -101,6 +121,7 @@ export function useFetchNotifications({ enabled = true, limit = DEFAULT_LIMIT, p
 			return [];
 		});
 		setUnreadCount(0);
+		setUnreadMessageCount(0);
 
 		try {
 			const response = await fetch("/api/community/notifications", {
@@ -120,34 +141,90 @@ export function useFetchNotifications({ enabled = true, limit = DEFAULT_LIMIT, p
 
 	useEffect(() => {
 		if (!enabled) {
-			setIsLoading(false);
 			return;
 		}
 
 		const controller = new AbortController();
 		load(controller.signal);
+		let timerId = null;
+		let isUnmounted = false;
+		let pusherClient = null;
+		let pusherChannel = null;
 
-		let intervalId;
-		if (pollInterval > 0) {
-			intervalId = window.setInterval(() => load(), pollInterval);
+		function scheduleNextPoll() {
+			if (isUnmounted || pollInterval <= 0) return;
+			const isVisible = document.visibilityState === "visible";
+			const nextDelay = isVisible ? pollInterval : hiddenPollInterval;
+			timerId = window.setTimeout(async () => {
+				if (isUnmounted) return;
+				if (navigator.onLine !== false) {
+					await load();
+				}
+				scheduleNextPoll();
+			}, nextDelay);
 		}
+
+		async function connectRealtimeIfConfigured() {
+			if (!userId) return;
+			const key = process.env.NEXT_PUBLIC_PUSHER_KEY;
+			const cluster = process.env.NEXT_PUBLIC_PUSHER_CLUSTER;
+			if (!key || !cluster) return;
+
+			try {
+				const { default: Pusher } = await import("pusher-js");
+
+				pusherClient = new Pusher(key, {
+					cluster,
+					channelAuthorization: {
+						endpoint: "/api/pusher/auth",
+					},
+				});
+
+				pusherChannel = pusherClient.subscribe(`private-user-${userId}`);
+				pusherChannel.bind("community:messages-updated", () => {
+					load();
+				});
+			} catch {
+				// Silent fallback: polling still keeps notification state updated.
+			}
+		}
+
+		scheduleNextPoll();
+		connectRealtimeIfConfigured();
 
 		function handleRefresh() {
 			load();
 		}
+
+		function handleVisibilityChange() {
+			if (document.visibilityState === "visible") {
+				load();
+			}
+		}
+
 		window.addEventListener("community-notifications:refresh", handleRefresh);
+		document.addEventListener("visibilitychange", handleVisibilityChange);
 
 		return () => {
+			isUnmounted = true;
 			controller.abort();
-			if (intervalId) window.clearInterval(intervalId);
+			if (timerId) window.clearTimeout(timerId);
+			if (pusherChannel) {
+				pusherChannel.unbind_all();
+			}
+			if (pusherClient) {
+				pusherClient.disconnect();
+			}
 			window.removeEventListener("community-notifications:refresh", handleRefresh);
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
 		};
-	}, [enabled, load, pollInterval]);
+	}, [enabled, hiddenPollInterval, load, pollInterval, userId]);
 
 	return {
 		notifications,
 		unreadCount,
-		isLoading,
+		unreadMessageCount,
+		isLoading: enabled ? isLoadingState : false,
 		markAsRead,
 		markAllAsRead,
 		refresh,

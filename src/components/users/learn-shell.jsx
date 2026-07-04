@@ -5,10 +5,10 @@ import { LessonSidebar } from "./lesson-sidebar";
 import Logo from "@/components/logo";
 import { UserButtonClient } from "../ui/user-button-client";
 import { CommunityNotificationsMenu } from "../community/community-notifications-menu";
-import Footer from "../partials/Footer";
 import Link from "next/link";
 import { ArrowLeft, X } from "lucide-react";
 import { markdownToExcerpt } from "@/lib/markdown-excerpt";
+import Footer from "@/components/footer";
 
 function FloatingLessonsTrigger() {
 	const { open } = useSidebar();

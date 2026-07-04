@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Search, Users } from "lucide-react";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
+import { canViewerSeeUserProfile } from "@/lib/social-graph";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +27,8 @@ export async function generateMetadata({ params }) {
 
 export default async function PublicFollowersPage({ params }) {
 	const { username } = await params;
+	const session = await auth();
+	const currentUserId = session?.user?.id || null;
 
 	const targetUser = await prisma.user.findFirst({
 		where: {
@@ -34,11 +38,20 @@ export default async function PublicFollowersPage({ params }) {
 			id: true,
 			username: true,
 			name: true,
-			profile: { select: { publicProfile: true } },
+			profile: { select: { publicProfile: true, profileVisibilityScope: true } },
 		},
 	});
 
-	if (!targetUser || !targetUser.profile?.publicProfile) {
+	const visibilityScope = targetUser?.profile?.profileVisibilityScope || (targetUser?.profile?.publicProfile ? "PUBLIC" : "MEMBERS");
+	const canViewProfile = targetUser
+		? await canViewerSeeUserProfile({
+				viewerId: currentUserId,
+				targetUserId: targetUser.id,
+				targetProfileVisibilityScope: visibilityScope,
+			})
+		: false;
+
+	if (!targetUser || !canViewProfile) {
 		notFound();
 	}
 

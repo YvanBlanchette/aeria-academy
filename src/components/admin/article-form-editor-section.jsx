@@ -3,24 +3,44 @@ import {
 	Bold,
 	Code2,
 	Columns3,
+	FileAudio,
+	FileText,
 	Eye,
 	EyeOff,
 	Focus,
 	Heading2,
 	Heading3,
+	ImageIcon,
 	Italic,
 	Link2,
 	List,
 	ListOrdered,
 	Minimize2,
+	PanelTop,
+	Quote,
 	Redo2,
+	ScanText,
+	Sparkles,
 	Underline,
 	Undo2,
+	Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuLabel,
+	ContextMenuSeparator,
+	ContextMenuShortcut,
+	ContextMenuSub,
+	ContextMenuSubContent,
+	ContextMenuSubTrigger,
+	ContextMenuTrigger,
+} from "@/components/ui/context-menu";
 import {
 	DropdownMenu,
 	DropdownMenuCheckboxItem,
@@ -64,11 +84,14 @@ export function ArticleFormEditorSection({
 	onInsertBulletList,
 	onInsertNumberedList,
 	onInsertQuote,
+	onQuickInsertSnippet,
+	contextualQuickInsertSuggestions,
 	onGenerateSlug,
 	onApplyTemplate,
 	onCopyMarkdown,
 	onShowStats,
 	onOpenCommandPalette,
+	onPasteImageFromClipboard,
 	showQuickToolbar,
 	onToggleQuickToolbar,
 	isRightPanelOpen,
@@ -82,7 +105,213 @@ export function ArticleFormEditorSection({
 	onContentChange,
 	onEditorKeyDown,
 	onCommandPaletteOpenChange,
+	commandQueryHint,
+	slashInput,
+	onSlashInputChange,
+	onApplySlashCommand,
+	commandHint,
+	wordCount,
+	readingMinutes,
+	isCommandPaletteOpen,
 }) {
+	function renderEditorContextMenu() {
+		return (
+			<ContextMenuContent
+				className="w-72 rounded-xl border-border/80 bg-background/95 p-2 shadow-xl backdrop-blur"
+				onOpenAutoFocus={(event) => {
+					// Keep focus in the textarea so native text selection highlight remains visible.
+					event.preventDefault();
+				}}
+			>
+				<ContextMenuLabel className="pb-1 text-[11px] uppercase tracking-wide">Actions principales</ContextMenuLabel>
+				<ContextMenuItem onSelect={onUndo}>
+					<Undo2 className="h-4 w-4" />
+					Annuler
+					<ContextMenuShortcut>Ctrl+Z</ContextMenuShortcut>
+				</ContextMenuItem>
+				<ContextMenuItem onSelect={onRedo}>
+					<Redo2 className="h-4 w-4" />
+					Retablir
+					<ContextMenuShortcut>Ctrl+Y</ContextMenuShortcut>
+				</ContextMenuItem>
+				<ContextMenuSeparator />
+
+				<ContextMenuSub>
+					<ContextMenuSubTrigger>
+						<ScanText className="h-4 w-4" />
+						Format
+					</ContextMenuSubTrigger>
+					<ContextMenuSubContent className="w-56">
+						<ContextMenuItem onSelect={onWrapBold}>
+							<Bold className="h-4 w-4" />
+							Gras
+							<ContextMenuShortcut>Ctrl+B</ContextMenuShortcut>
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onWrapItalic}>
+							<Italic className="h-4 w-4" />
+							Italique
+							<ContextMenuShortcut>Ctrl+I</ContextMenuShortcut>
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onWrapUnderline}>
+							<Underline className="h-4 w-4" />
+							Souligne
+							<ContextMenuShortcut>Ctrl+U</ContextMenuShortcut>
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertMarkdownLink}>
+							<Link2 className="h-4 w-4" />
+							Lien
+							<ContextMenuShortcut>Ctrl+K</ContextMenuShortcut>
+						</ContextMenuItem>
+						<ContextMenuSeparator />
+						<ContextMenuItem onSelect={onInsertH1}>Titre H1</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertH2}>
+							<Heading2 className="h-4 w-4" />
+							Titre H2
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertH3}>
+							<Heading3 className="h-4 w-4" />
+							Titre H3
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertQuote}>
+							<Quote className="h-4 w-4" />
+							Citation
+						</ContextMenuItem>
+					</ContextMenuSubContent>
+				</ContextMenuSub>
+
+				{Array.isArray(contextualQuickInsertSuggestions) && contextualQuickInsertSuggestions.length > 0 ? (
+					<ContextMenuSub>
+						<ContextMenuSubTrigger>
+							<Sparkles className="h-4 w-4" />
+							Suggestions contextuelles
+						</ContextMenuSubTrigger>
+						<ContextMenuSubContent className="w-72">
+							{contextualQuickInsertSuggestions.map((suggestion) => (
+								<ContextMenuItem
+									key={suggestion.key}
+									onSelect={() => onQuickInsertSnippet(suggestion.key)}
+									className="flex flex-col items-start gap-0.5"
+								>
+									<span className="font-medium">{suggestion.title}</span>
+									<span className="text-[11px] text-muted-foreground">{suggestion.description}</span>
+								</ContextMenuItem>
+							))}
+						</ContextMenuSubContent>
+					</ContextMenuSub>
+				) : null}
+
+				<ContextMenuSub>
+					<ContextMenuSubTrigger>
+						<List className="h-4 w-4" />
+						Listes et blocs
+					</ContextMenuSubTrigger>
+					<ContextMenuSubContent className="w-56">
+						<ContextMenuItem onSelect={onInsertBulletList}>
+							<List className="h-4 w-4" />
+							Liste a puces
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertNumberedList}>
+							<ListOrdered className="h-4 w-4" />
+							Liste numerotee
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onAddChecklist}>Checklist</ContextMenuItem>
+						<ContextMenuItem onSelect={onAddTable}>
+							<Columns3 className="h-4 w-4" />
+							Tableau
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertCodeBlock}>
+							<Code2 className="h-4 w-4" />
+							Bloc de code
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onAddSeparator}>Separateur</ContextMenuItem>
+					</ContextMenuSubContent>
+				</ContextMenuSub>
+
+				<ContextMenuSub>
+					<ContextMenuSubTrigger>
+						<PanelTop className="h-4 w-4" />
+						Quick Insert
+					</ContextMenuSubTrigger>
+					<ContextMenuSubContent className="w-72">
+						<ContextMenuItem
+							onSelect={() => onQuickInsertSnippet("calloutSuccess")}
+							className="flex flex-col items-start gap-0.5"
+						>
+							<span className="font-medium">Callout succès</span>
+							<span className="text-[11px] text-muted-foreground">Encadré d&apos;action clair pour mettre un point en valeur.</span>
+						</ContextMenuItem>
+						<ContextMenuItem
+							onSelect={() => onQuickInsertSnippet("faq")}
+							className="flex flex-col items-start gap-0.5"
+						>
+							<span className="font-medium">FAQ rapide</span>
+							<span className="text-[11px] text-muted-foreground">Structure question/réponse prête à compléter.</span>
+						</ContextMenuItem>
+						<ContextMenuItem
+							onSelect={() => onQuickInsertSnippet("comparisonTable")}
+							className="flex flex-col items-start gap-0.5"
+						>
+							<span className="font-medium">Tableau comparatif</span>
+							<span className="text-[11px] text-muted-foreground">Comparaison fournisseur, prix et bénéfices.</span>
+						</ContextMenuItem>
+						<ContextMenuItem
+							onSelect={() => onQuickInsertSnippet("cta")}
+							className="flex flex-col items-start gap-0.5"
+						>
+							<span className="font-medium">Bloc CTA</span>
+							<span className="text-[11px] text-muted-foreground">Appel à l&apos;action prêt à personnaliser.</span>
+						</ContextMenuItem>
+						<ContextMenuItem
+							onSelect={() => onQuickInsertSnippet("quotePro")}
+							className="flex flex-col items-start gap-0.5"
+						>
+							<span className="font-medium">Citation expert</span>
+							<span className="text-[11px] text-muted-foreground">Bloc citation avec auteur pour crédibiliser le contenu.</span>
+						</ContextMenuItem>
+					</ContextMenuSubContent>
+				</ContextMenuSub>
+
+				<ContextMenuSub>
+					<ContextMenuSubTrigger>
+						<ImageIcon className="h-4 w-4" />
+						Inserer media
+					</ContextMenuSubTrigger>
+					<ContextMenuSubContent className="w-56">
+						<ContextMenuItem onSelect={() => onMediaUpload("image", "image/*")}>
+							<ImageIcon className="h-4 w-4" />
+							Image
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onPasteImageFromClipboard}>
+							<ImageIcon className="h-4 w-4" />
+							Coller image presse-papiers
+							<ContextMenuShortcut>Ctrl+V</ContextMenuShortcut>
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={() => onMediaUpload("audio", "audio/*")}>
+							<FileAudio className="h-4 w-4" />
+							Audio
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={() => onMediaUpload("pdf", "application/pdf")}>
+							<FileText className="h-4 w-4" />
+							PDF
+						</ContextMenuItem>
+						<ContextMenuItem onSelect={onInsertYouTube}>
+							<Video className="h-4 w-4" />
+							Video YouTube
+						</ContextMenuItem>
+					</ContextMenuSubContent>
+				</ContextMenuSub>
+
+				<ContextMenuSeparator />
+				<ContextMenuItem onSelect={onOpenCommandPalette}>
+					<PanelTop className="h-4 w-4" />
+					Palette de commandes
+					<ContextMenuShortcut>{commandQueryHint || "Ctrl+K"}</ContextMenuShortcut>
+				</ContextMenuItem>
+				<ContextMenuItem onSelect={onShowStats}>Statistiques du texte</ContextMenuItem>
+			</ContextMenuContent>
+		);
+	}
+
 	return (
 		<>
 			<Card className={clsx(isFocusMode && "fixed inset-4 z-50 overflow-auto bg-neutral-100 shadow-xl p-0")}>
@@ -268,51 +497,6 @@ export function ArticleFormEditorSection({
 						</div>
 					</div>
 
-					{hasTextSelection ? (
-						<div className="sticky top-11 z-20 inline-flex w-fit items-center gap-1 rounded-lg border bg-background/95 p-1 shadow-lg backdrop-blur">
-							<ButtonTooltip
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="h-8 px-2 text-xl font-bold"
-								onClick={onWrapBold}
-								label="Gras Ctrl+B"
-							>
-								<Bold />
-							</ButtonTooltip>
-							<ButtonTooltip
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="h-8 px-2 text-xl italic"
-								onClick={onWrapItalic}
-								label="Italique Ctrl+I"
-							>
-								<Italic />
-							</ButtonTooltip>
-							<ButtonTooltip
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="h-8 px-2"
-								onClick={onWrapUnderline}
-								label="Souligné Ctrl+U"
-							>
-								<Underline />
-							</ButtonTooltip>
-							<ButtonTooltip
-								type="button"
-								variant="ghost"
-								size="sm"
-								className="h-8 px-2"
-								onClick={onInsertMarkdownLink}
-								label="Lien"
-							>
-								<Link2 />
-							</ButtonTooltip>
-						</div>
-					) : null}
-
 					{showQuickToolbar ? (
 						// QUICK TOOLBAR
 						<div className="flex flex-wrap justify-between items-center bg-muted py-2 px-8 mt-0 border-b-2 border-border">
@@ -456,39 +640,118 @@ export function ArticleFormEditorSection({
 						</div>
 					) : viewMode === "split" ? (
 						<div className="grid gap-3 lg:grid-cols-2">
-							<Textarea
-								ref={textareaRef}
-								value={content}
-								onChange={(e) => onContentChange(e.target.value)}
-								placeholder="Commence à écrire ton article en markdown..."
-								rows={20}
-								className="font-mono text-sm bg-white px-12 rounded-none py-6 border-none focus-within:ring-0"
-								onKeyDown={onEditorKeyDown}
-								onSelect={onSyncSelectionState}
-								onKeyUp={onSyncSelectionState}
-								onMouseUp={onSyncSelectionState}
-								required
-							/>
+							<ContextMenu>
+								<ContextMenuTrigger className="block">
+									<div>
+										<Textarea
+											ref={textareaRef}
+											value={content}
+											onChange={(e) => onContentChange(e.target.value)}
+											placeholder="Commence a ecrire ton article en markdown..."
+											rows={20}
+											className="font-mono text-sm bg-white px-12 rounded-none py-6 border-none focus-within:ring-0"
+											onKeyDown={onEditorKeyDown}
+											onSelect={onSyncSelectionState}
+											onKeyUp={onSyncSelectionState}
+											onMouseUp={onSyncSelectionState}
+											onContextMenu={onSyncSelectionState}
+											required
+										/>
+									</div>
+								</ContextMenuTrigger>
+								{renderEditorContextMenu()}
+							</ContextMenu>
 							<div className="min-h-100 rounded-md border p-6 bg-white overflow-auto">
 								{content ? <ArticleContent content={content} /> : <p className="text-muted-foreground">Aperçu vide. Écris du contenu pour le voir ici.</p>}
 							</div>
 						</div>
 					) : (
-						<Textarea
-							ref={textareaRef}
-							value={content}
-							onChange={(e) => onContentChange(e.target.value)}
-							placeholder="Commence à écrire ton article en markdown..."
-							rows={20}
-							className="font-mono text-sm bg-white px-12 rounded-none py-6 border-none focus:ring-0"
-							onSelect={onSyncSelectionState}
-							onKeyUp={onSyncSelectionState}
-							onMouseUp={onSyncSelectionState}
-							required
-						/>
+						<ContextMenu>
+							<ContextMenuTrigger className="block">
+								<div>
+									<Textarea
+										ref={textareaRef}
+										value={content}
+										onChange={(e) => onContentChange(e.target.value)}
+										placeholder="Commence a ecrire ton article en markdown..."
+										rows={20}
+										className="font-mono text-sm bg-white px-12 rounded-none py-6 border-none focus:ring-0"
+										onKeyDown={onEditorKeyDown}
+										onSelect={onSyncSelectionState}
+										onKeyUp={onSyncSelectionState}
+										onMouseUp={onSyncSelectionState}
+										onContextMenu={onSyncSelectionState}
+										required
+									/>
+								</div>
+							</ContextMenuTrigger>
+							{renderEditorContextMenu()}
+						</ContextMenu>
 					)}
+
+					<div className="mx-6 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/35 px-3 py-2 text-xs text-muted-foreground">
+						<p>Astuce: clic droit dans l&apos;editeur pour ouvrir les actions rapides.</p>
+						<div className="inline-flex items-center gap-2">
+							<span className="rounded bg-background px-1.5 py-0.5 font-mono">{commandQueryHint || "Ctrl+K"}</span>
+							<span>Palette</span>
+							<span>•</span>
+							<span>{wordCount || 0} mots</span>
+							<span>•</span>
+							<span>{readingMinutes || 1} min</span>
+						</div>
+					</div>
 				</CardContent>
 			</Card>
+
+			<CommandDialog
+				open={isCommandPaletteOpen}
+				onOpenChange={onCommandPaletteOpenChange}
+			>
+				<Command>
+					<CommandInput
+						placeholder="Rechercher une action..."
+						value={slashInput || ""}
+						onValueChange={onSlashInputChange}
+					/>
+					<CommandList>
+						<CommandEmpty>Aucune commande.</CommandEmpty>
+						<CommandGroup heading="Edition">
+							<CommandItem onSelect={onUndo}>
+								<Undo2 className="h-4 w-4" /> Annuler
+								<CommandShortcut>Ctrl+Z</CommandShortcut>
+							</CommandItem>
+							<CommandItem onSelect={onRedo}>
+								<Redo2 className="h-4 w-4" /> Retablir
+								<CommandShortcut>Ctrl+Y</CommandShortcut>
+							</CommandItem>
+							<CommandItem onSelect={onWrapBold}>
+								<Bold className="h-4 w-4" /> Gras
+							</CommandItem>
+							<CommandItem onSelect={onWrapItalic}>
+								<Italic className="h-4 w-4" /> Italique
+							</CommandItem>
+						</CommandGroup>
+						<CommandGroup heading="Insertion">
+							<CommandItem onSelect={() => onMediaUpload("image", "image/*")}>
+								<ImageIcon className="h-4 w-4" /> Inserer image
+							</CommandItem>
+							<CommandItem onSelect={() => onMediaUpload("pdf", "application/pdf")}>
+								<FileText className="h-4 w-4" /> Inserer PDF
+							</CommandItem>
+							<CommandItem onSelect={onInsertYouTube}>
+								<Video className="h-4 w-4" /> Inserer video YouTube
+							</CommandItem>
+							<CommandItem onSelect={onInsertCodeBlock}>
+								<Code2 className="h-4 w-4" /> Inserer bloc code
+							</CommandItem>
+						</CommandGroup>
+						<CommandGroup heading="Commandes slash">
+							<CommandItem onSelect={onApplySlashCommand}>Executer la commande slash saisie</CommandItem>
+							{commandHint ? <CommandItem disabled>{commandHint}</CommandItem> : null}
+						</CommandGroup>
+					</CommandList>
+				</Command>
+			</CommandDialog>
 		</>
 	);
 }

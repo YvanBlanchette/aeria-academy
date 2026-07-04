@@ -182,3 +182,23 @@
 .dashboard-shell {
 	scrollbar-gutter: stable;
 }
+
+/* Prevent horizontal layout shift when Radix/react-remove-scroll locks body scroll. */
+body[data-scroll-locked],
+body.with-scroll-bars-hidden {
+	margin-right: 0 !important;
+	padding-right: 0 !important;
+}
+
+/* Neutralize react-remove-scroll compensation classes that can shift fixed/sticky layouts. */
+body.with-scroll-bars-hidden {
+	--removed-body-scroll-bar-size: 0px !important;
+}
+
+.right-scroll-bar-position {
+	right: 0 !important;
+}
+
+.width-before-scroll-bar {
+	margin-right: 0 !important;
+}

@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 
 export async function getNotificationsPayload({ userId, limit }) {
-	const [notifications, unreadCount] = await Promise.all([
+	const [notifications, unreadCount, unreadMessageCount] = await Promise.all([
 		prisma.communityNotification.findMany({
 			where: {
 				recipientId: userId,
@@ -34,10 +34,18 @@ export async function getNotificationsPayload({ userId, limit }) {
 				isRead: false,
 			},
 		}),
+		prisma.communityNotification.count({
+			where: {
+				recipientId: userId,
+				isRead: false,
+				type: "MESSAGE",
+			},
+		}),
 	]);
 
 	return {
 		unreadCount,
+		unreadMessageCount,
 		notifications: notifications.map((item) => ({
 			id: item.id,
 			type: item.type,

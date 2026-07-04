@@ -5,8 +5,8 @@ import { useFetchNotifications } from "@/hooks/use-fetch-notifications";
 
 const NotificationsContext = createContext(null);
 
-export function NotificationsProvider({ children, enabled = true, onNewNotifications }) {
-	const value = useFetchNotifications({ enabled, onNewNotifications });
+export function NotificationsProvider({ children, enabled = true, userId = null, onNewNotifications }) {
+	const value = useFetchNotifications({ enabled, userId, onNewNotifications });
 
 	return <NotificationsContext.Provider value={value}>{children}</NotificationsContext.Provider>;
 }
@@ -27,16 +27,12 @@ export function useNotifications() {
  * Convenience selector for the messenger button.
  *
  * Returns:
- *   - hasUnreadMessages: boolean, true if any unread MESSAGE notification is in the recent window
- *   - unreadMessageCount: count of unread MESSAGE items in the recent window (capped by fetch limit)
+ *   - hasUnreadMessages: boolean, true if any unread MESSAGE notification exists
+ *   - unreadMessageCount: global unread MESSAGE count from the notifications payload
  *   - markMessagesAsRead: marks the currently-visible unread MESSAGE items as read
- *
- * Note: unreadMessageCount reflects only the last N notifications the server returned,
- * not a true global count per-type. If you need an exact number, add a per-type
- * count to the /api/community/notifications payload and expose it here.
  */
 export function useMessageNotifications() {
-	const { notifications, markAsRead } = useNotifications();
+	const { notifications, markAsRead, unreadMessageCount } = useNotifications();
 
 	const unreadMessages = useMemo(() => notifications.filter((n) => n.type === "MESSAGE" && !n.isRead), [notifications]);
 
@@ -45,8 +41,8 @@ export function useMessageNotifications() {
 	}, [unreadMessages, markAsRead]);
 
 	return {
-		hasUnreadMessages: unreadMessages.length > 0,
-		unreadMessageCount: unreadMessages.length,
+		hasUnreadMessages: unreadMessageCount > 0,
+		unreadMessageCount,
 		markMessagesAsRead,
 	};
 }

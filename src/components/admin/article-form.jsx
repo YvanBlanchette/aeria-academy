@@ -16,6 +16,29 @@ import { ArticleFormMetadataSection } from "@/components/admin/article-form-meta
 import { ArticleFormPublicationSection } from "@/components/admin/article-form-publication-section";
 import { ArticleFormSidebarSection } from "@/components/admin/article-form-sidebar-section";
 
+const QUICK_INSERT_SNIPPET_META = {
+	calloutSuccess: {
+		title: "Callout succes",
+		description: "Mettre en avant un point cle actionnable.",
+	},
+	faq: {
+		title: "FAQ rapide",
+		description: "Structurer une reponse claire aux objections.",
+	},
+	comparisonTable: {
+		title: "Tableau comparatif",
+		description: "Comparer options, prix et limites.",
+	},
+	cta: {
+		title: "Bloc CTA",
+		description: "Declencher une action concrete.",
+	},
+	quotePro: {
+		title: "Citation expert",
+		description: "Ajouter preuve sociale et credibilite.",
+	},
+};
+
 export function ArticleForm({ article, allTags = [] }) {
 	const router = useRouter();
 	const isEdit = !!article;
@@ -53,9 +76,22 @@ export function ArticleForm({ article, allTags = [] }) {
 	const [historyFuture, setHistoryFuture] = useState(Array.isArray(initialDraft?.historyFuture) ? initialDraft.historyFuture.slice(0, HISTORY_LIMIT) : []);
 	const [slashInput, setSlashInput] = useState("");
 	const [commandHint, setCommandHint] = useState("");
+	const [contextualQuickInsertSuggestions, setContextualQuickInsertSuggestions] = useState([
+		{
+			key: "calloutSuccess",
+			title: QUICK_INSERT_SNIPPET_META.calloutSuccess.title,
+			description: QUICK_INSERT_SNIPPET_META.calloutSuccess.description,
+		},
+		{
+			key: "cta",
+			title: QUICK_INSERT_SNIPPET_META.cta.title,
+			description: QUICK_INSERT_SNIPPET_META.cta.description,
+		},
+	]);
 
 	const textareaRef = useRef(null);
 	const checkpointRef = useRef(content);
+	const savedSelectionRef = useRef({ start: 0, end: 0 });
 	const selectedTagObjects = allTags.filter((tag) => selectedTagIds.includes(tag.id));
 	const hierarchicalTagNames = selectedTagObjects
 		.map((tag) => tag.name)
@@ -182,14 +218,31 @@ export function ArticleForm({ article, allTags = [] }) {
 		setTimeout(() => {
 			ta.focus();
 			ta.setSelectionRange(start + text.length, start + text.length);
+			savedSelectionRef.current = { start: start + text.length, end: start + text.length };
 		}, 0);
+	}
+
+	function resolveSelectionRange({ fallbackToSavedSelection = false } = {}) {
+		const ta = textareaRef.current;
+		if (!ta) return { start: 0, end: 0 };
+
+		const start = ta.selectionStart ?? 0;
+		const end = ta.selectionEnd ?? start;
+		const saved = savedSelectionRef.current;
+		const hasSavedSelection = saved.end > saved.start;
+		const isTextareaFocused = document.activeElement === ta;
+
+		if (fallbackToSavedSelection && hasSavedSelection && (start === end || !isTextareaFocused)) {
+			return saved;
+		}
+
+		return { start, end };
 	}
 
 	function wrapSelection(prefix, suffix = prefix) {
 		const ta = textareaRef.current;
 		if (!ta) return;
-		const start = ta.selectionStart;
-		const end = ta.selectionEnd;
+		const { start, end } = resolveSelectionRange({ fallbackToSavedSelection: true });
 		const before = content.slice(0, start);
 		const selectedRaw = content.slice(start, end);
 		const after = content.slice(end);
@@ -229,6 +282,36 @@ export function ArticleForm({ article, allTags = [] }) {
 		setTimeout(() => {
 			ta.focus();
 			ta.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+			savedSelectionRef.current = { start: nextSelectionStart, end: nextSelectionEnd };
+		}, 0);
+	}
+
+	function removeSelectionStyles() {
+		const ta = textareaRef.current;
+		if (!ta) return;
+		const { start, end } = resolveSelectionRange({ fallbackToSavedSelection: true });
+		if (end <= start) {
+			toast.info("Selectionne du texte pour retirer la mise en forme");
+			return;
+		}
+
+		const before = content.slice(0, start);
+		const selected = content.slice(start, end);
+		const after = content.slice(end);
+		const cleaned = selected
+			.replace(/\*\*/g, "")
+			.replace(/(?<!\*)\*(?!\*)/g, "")
+			.replace(/<\/?u>/g, "")
+			.replace(/`/g, "");
+
+		setHistoryPast((prev) => [...prev.slice(-(HISTORY_LIMIT - 1)), content]);
+		setHistoryFuture([]);
+		setIsDirty(true);
+		setContent(`${before}${cleaned}${after}`);
+		setTimeout(() => {
+			ta.focus();
+			ta.setSelectionRange(start, start + cleaned.length);
+			savedSelectionRef.current = { start, end: start + cleaned.length };
 		}, 0);
 	}
 
@@ -367,11 +450,72 @@ export function ArticleForm({ article, allTags = [] }) {
 		insertAtCursor(snippets[kind] || "");
 	}
 
+	function quickInsertSnippet(kind) {
+		const snippets = {
+			calloutSuccess: '\n::callout[Point cle a retenir]{type="success"}\n',
+			faq: "\n### FAQ\n\n#### Question frequente\nReponse courte et actionnable.\n",
+			comparisonTable: "\n| Option | Avantage | Limite |\n| --- | --- | --- |\n| Option A | ... | ... |\n| Option B | ... | ... |\n",
+			cta: '\n::callout[Passe a l\'action]{type="success"}\n',
+			quotePro: '\n::quote[Conseil expert a mettre en avant]{author="Nom de l\'expert"}\n',
+		};
+
+		const snippet = snippets[kind] || "";
+		if (!snippet) return;
+		insertAtCursor(snippet);
+		toast.success("Bloc insere");
+	}
+
+	function getContextualQuickInserts(nextContent = content, selectionStart = null, selectionEnd = null) {
+		if (typeof selectionStart !== "number" || typeof selectionEnd !== "number") {
+			const ta = textareaRef.current;
+			if (!ta) {
+				return ["calloutSuccess", "cta"].map((key) => ({
+					key,
+					title: QUICK_INSERT_SNIPPET_META[key].title,
+					description: QUICK_INSERT_SNIPPET_META[key].description,
+				}));
+			}
+			selectionStart = ta.selectionStart ?? nextContent.length;
+			selectionEnd = ta.selectionEnd ?? selectionStart;
+		}
+
+		if (nextContent.length === 0) {
+			return ["calloutSuccess", "cta"].map((key) => ({
+				key,
+				title: QUICK_INSERT_SNIPPET_META[key].title,
+				description: QUICK_INSERT_SNIPPET_META[key].description,
+			}));
+		}
+
+		const anchor = selectionStart;
+		const selectedText = nextContent.slice(selectionStart, selectionEnd).toLowerCase();
+		const before = nextContent.slice(Math.max(0, anchor - 220), anchor).toLowerCase();
+		const context = `${before}\n${selectedText}`;
+
+		// Keep top suggestions deterministic and focused around author intent.
+		const rulebook = [
+			{ key: "faq", pattern: /(faq|questions? frequentes?|objection|question|reponse)/i },
+			{ key: "comparisonTable", pattern: /(compar|versus|\bvs\b|tableau|benchmark|prix|tarif|offre|plan)/i },
+			{ key: "cta", pattern: /(inscri|reserve|contact|demande|acheter|conversion|prochaine etape|action)/i },
+			{ key: "quotePro", pattern: /(citation|temoignage|expert|avis client|retour d\Wexperience)/i },
+			{ key: "calloutSuccess", pattern: /(important|a retenir|attention|astuce|conseil|point cle|best practice)/i },
+		];
+
+		const matches = rulebook.filter((rule) => rule.pattern.test(context)).map((rule) => rule.key);
+		const unique = Array.from(new Set(matches));
+		const limited = (unique.length > 0 ? unique : ["calloutSuccess", "cta"]).slice(0, 3);
+
+		return limited.map((key) => ({
+			key,
+			title: QUICK_INSERT_SNIPPET_META[key].title,
+			description: QUICK_INSERT_SNIPPET_META[key].description,
+		}));
+	}
+
 	function insertMarkdownLink() {
 		const ta = textareaRef.current;
 		if (!ta) return;
-		const start = ta.selectionStart;
-		const end = ta.selectionEnd;
+		const { start, end } = resolveSelectionRange({ fallbackToSavedSelection: true });
 		const selected = content.slice(start, end) || "texte";
 		const markdownLink = `[${selected}](https://)`;
 		setIsDirty(true);
@@ -380,6 +524,7 @@ export function ArticleForm({ article, allTags = [] }) {
 			ta.focus();
 			const urlStart = start + markdownLink.lastIndexOf("https://");
 			ta.setSelectionRange(urlStart, urlStart + "https://".length);
+			savedSelectionRef.current = { start: urlStart, end: urlStart + "https://".length };
 		}, 0);
 	}
 
@@ -425,6 +570,53 @@ export function ArticleForm({ article, allTags = [] }) {
 			insertAtCursor(directive);
 		};
 		input.click();
+	}
+
+	async function handlePasteImageFromClipboard() {
+		if (!navigator?.clipboard?.read) {
+			toast.error("Collage d'image non supporte par ce navigateur");
+			return;
+		}
+
+		try {
+			const clipboardItems = await navigator.clipboard.read();
+			const imageItem = clipboardItems.find((item) => item.types.some((type) => type.startsWith("image/")));
+
+			if (!imageItem) {
+				toast.info("Aucune image detectee dans le presse-papiers");
+				return;
+			}
+
+			const imageType = imageItem.types.find((type) => type.startsWith("image/"));
+			const blob = await imageItem.getType(imageType);
+
+			const extension = imageType.includes("png")
+				? "png"
+				: imageType.includes("jpeg") || imageType.includes("jpg")
+					? "jpg"
+					: imageType.includes("webp")
+						? "webp"
+						: "png";
+
+			const file = new File([blob], `capture-${Date.now()}.${extension}`, { type: imageType });
+
+			toast.loading("Import image depuis le presse-papiers...");
+			const formData = new FormData();
+			formData.set("file", file);
+			formData.set("kind", "image");
+			const result = await uploadArticleMedia(formData);
+			toast.dismiss();
+
+			if (result?.error) {
+				toast.error(result.error);
+				return;
+			}
+
+			insertAtCursor(`\n::image[${result.url}]{caption=""}\n`);
+			toast.success("Image collee dans l'article");
+		} catch {
+			toast.error("Impossible d'acceder au presse-papiers image");
+		}
 	}
 
 	async function handleSubmit(e) {
@@ -485,13 +677,32 @@ export function ArticleForm({ article, allTags = [] }) {
 		}));
 	}
 
-	function syncSelectionState() {
+	function syncSelectionState(event) {
 		const ta = textareaRef.current;
 		if (!ta || viewMode === "preview") {
 			setHasTextSelection(false);
+			setContextualQuickInsertSuggestions(getContextualQuickInserts(content));
 			return;
 		}
-		setHasTextSelection(ta.selectionEnd > ta.selectionStart);
+
+		const start = ta.selectionStart ?? 0;
+		const end = ta.selectionEnd ?? start;
+		const hasCurrentSelection = end > start;
+		const isContextMenuEvent = event?.type === "contextmenu";
+
+		if (hasCurrentSelection && !isContextMenuEvent) {
+			savedSelectionRef.current = { start, end };
+		} else if (!isContextMenuEvent) {
+			savedSelectionRef.current = { start, end };
+		}
+
+		const useSavedSelection = isContextMenuEvent || !hasCurrentSelection;
+		const effectiveStart = useSavedSelection ? savedSelectionRef.current.start : start;
+		const effectiveEnd = useSavedSelection ? savedSelectionRef.current.end : end;
+		const hasEffectiveSelection = effectiveEnd > effectiveStart;
+
+		setHasTextSelection(hasEffectiveSelection);
+		setContextualQuickInsertSuggestions(getContextualQuickInserts(content, effectiveStart, effectiveEnd));
 	}
 
 	function submitEditorForm() {
@@ -590,19 +801,24 @@ export function ArticleForm({ article, allTags = [] }) {
 					onAddChecklist={() => addSnippet("checklist")}
 					onInsertCodeBlock={() => insertAtCursor("\n```md\nVotre code ici\n```\n")}
 					onAddSeparator={() => addSnippet("separator")}
+					onInsertH1={() => insertAtCursor("\n# Titre principal\n\n")}
+					onInsertSubtitle={() => insertAtCursor("\n## Sous-titre\n\n")}
+					onRemoveStyles={removeSelectionStyles}
 					onInsertH2={() => insertAtCursor("\n## Sous-titre\n\n")}
 					onInsertH3={() => insertAtCursor("\n### Sous-section\n\n")}
 					onInsertBulletList={() => insertAtCursor("\n- Point 1\n- Point 2\n")}
 					onInsertNumberedList={() => insertAtCursor("\n1. Etape 1\n2. Etape 2\n")}
 					onInsertQuote={() => insertAtCursor('\n::quote[Citation]{author="Auteur"}\n')}
+					onQuickInsertSnippet={quickInsertSnippet}
+					contextualQuickInsertSuggestions={contextualQuickInsertSuggestions}
 					onGenerateSlug={generateSlugFromTitle}
 					onApplyTemplate={applyTemplate}
 					onCopyMarkdown={copyMarkdownToClipboard}
 					onShowStats={() => toast.message(`${wordCount} mots · ${readingMinutes} min de lecture`)}
 					onOpenCommandPalette={() => setIsCommandPaletteOpen(true)}
+					onPasteImageFromClipboard={handlePasteImageFromClipboard}
 					showQuickToolbar={showQuickToolbar}
 					onToggleQuickToolbar={() => setShowQuickToolbar((v) => !v)}
-
 					isRightPanelOpen={isRightPanelOpen}
 					onToggleRightPanel={() => setIsRightPanelOpen((v) => !v)}
 					rightPanelSections={rightPanelSections}
@@ -613,8 +829,12 @@ export function ArticleForm({ article, allTags = [] }) {
 					textareaRef={textareaRef}
 					content={content}
 					onContentChange={(value) => {
+						const ta = textareaRef.current;
+						const start = ta?.selectionStart ?? value.length;
+						const end = ta?.selectionEnd ?? start;
 						setIsDirty(true);
 						setContent(value);
+						setContextualQuickInsertSuggestions(getContextualQuickInserts(value, start, end));
 					}}
 					onEditorKeyDown={handleEditorKeyDown}
 					slashInput={slashInput}

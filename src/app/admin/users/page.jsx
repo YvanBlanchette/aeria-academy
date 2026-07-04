@@ -112,23 +112,30 @@ export default async function UsersPage({ searchParams }) {
 						>
 							Admins
 						</Link>
+						<span className="h-8 w-px bg-neutral-300 mx-6" />
+						<Link
+							href={hrefWith({ membership: "all", page: 1 })}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "all" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+						>
+							Tous
+						</Link>
+						<Link
+							href={hrefWith({ membership: "FREE", page: 1 })}
+							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "FREE" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
+						>
+							Gratuit
+						</Link>
 						<Link
 							href={hrefWith({ membership: "ACADEMY", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "ACADEMY" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
 						>
-							ACADEMY
+							Académie
 						</Link>
 						<Link
 							href={hrefWith({ membership: "PRIME", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${membership === "PRIME" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
 						>
-							PRIME
-						</Link>
-						<Link
-							href={hrefWith({ verified: "yes", page: 1 })}
-							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${verified === "yes" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"}`}
-						>
-							Email vérifié
+							Prime
 						</Link>
 					</div>
 

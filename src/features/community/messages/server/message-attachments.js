@@ -1,9 +1,10 @@
 import { existsSync } from "fs";
-import { mkdir, writeFile } from "fs/promises";
+import { mkdir, unlink, writeFile } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 
 const COMMUNITY_MESSAGE_ATTACHMENT_CONFIG = {
+	// Centralized policy for file acceptance and size limits.
 	maxSize: 15 * 1024 * 1024,
 	allowedMimes: [
 		"image/jpeg",
@@ -45,7 +46,47 @@ function getSafeAttachmentExtension(file) {
 	return mimeMap[file.type] || "";
 }
 
+function parseSerializedAttachmentField(value) {
+	if (!value || typeof value !== "string") return [];
+	const trimmed = value.trim();
+	if (!trimmed) return [];
+	if (!trimmed.startsWith("[")) return [trimmed];
+
+	try {
+		const parsed = JSON.parse(trimmed);
+		return Array.isArray(parsed) ? parsed.filter((item) => typeof item === "string" && item.trim().length > 0) : [];
+	} catch {
+		return [trimmed];
+	}
+}
+
+export async function deleteCommunityMessageAttachmentFiles(attachmentUrlField) {
+	// Accept both serialized arrays and legacy single-string URLs.
+	const urls = parseSerializedAttachmentField(attachmentUrlField);
+	if (urls.length === 0) return;
+
+	const uploadDir = path.join(process.cwd(), "public", "uploads", "community", "messages");
+	const allowedPrefix = "/uploads/community/messages/";
+
+	await Promise.allSettled(
+		urls.map(async (url) => {
+			// Never delete outside the community/messages upload directory.
+			if (typeof url !== "string") return;
+			const cleanUrl = url.split("?")[0] || "";
+			if (!cleanUrl.startsWith(allowedPrefix)) return;
+
+			const filename = path.basename(cleanUrl);
+			if (!filename) return;
+
+			const filePath = path.join(uploadDir, filename);
+			if (!existsSync(filePath)) return;
+			await unlink(filePath);
+		}),
+	);
+}
+
 export async function uploadCommunityMessageAttachment({ file, sessionUserId }) {
+	// Validate file against explicit allow-list before any disk write.
 	if (!COMMUNITY_MESSAGE_ATTACHMENT_CONFIG.allowedMimes.includes(file.type)) {
 		return { error: `Type de fichier non autorise: ${file.type}` };
 	}

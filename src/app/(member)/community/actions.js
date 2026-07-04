@@ -3,6 +3,7 @@
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { triggerCommunityRealtimeUpdate } from "@/lib/pusher-server";
 import { canModerateCommunityContent, requireCommunityUser } from "@/features/community/server/community-guards";
 import { uploadCommunityPostImageFile, uploadCommunityStoryImageFile } from "@/features/community/server/community-media-upload";
 
@@ -168,6 +169,11 @@ export async function createCommunityComment(formData) {
 				commentId: comment.id,
 			},
 		});
+
+		await triggerCommunityRealtimeUpdate({
+			userIds: [post.authorId],
+			reason: "notification.post_comment",
+		});
 	}
 
 	revalidatePath("/community");
@@ -313,6 +319,13 @@ export async function toggleCommunityPostLike(postId) {
 				recipientId: post.authorId,
 			},
 		});
+
+		if (post.authorId !== user.id) {
+			await triggerCommunityRealtimeUpdate({
+				userIds: [post.authorId],
+				reason: "notification.post_like_removed",
+			});
+		}
 	} else {
 		await prisma.communityPostLike.create({
 			data: {
@@ -329,6 +342,11 @@ export async function toggleCommunityPostLike(postId) {
 					type: "POST_LIKE",
 					postId,
 				},
+			});
+
+			await triggerCommunityRealtimeUpdate({
+				userIds: [post.authorId],
+				reason: "notification.post_like",
 			});
 		}
 	}

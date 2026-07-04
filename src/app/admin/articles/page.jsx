@@ -66,10 +66,10 @@ export default async function AdminArticlesPage({ searchParams }) {
 				<div className="rounded-lg border bg-white p-4 shadow-sm">
 					<div className="flex items-center justify-between">
 						<p className="text-sm text-muted-foreground">Accès</p>
-						<Badge variant="outline">tiers</Badge>
+						<Badge variant="outline">Tiers</Badge>
 					</div>
 					<p className="mt-2 text-sm font-medium">
-						FREE {freeCount} • ACADEMY {academyCount} • PRIME {primeCount}
+						Gratuit: {freeCount} • Académie: {academyCount} • Prime: {primeCount}
 					</p>
 				</div>
 				<div className="rounded-lg border bg-white p-4 shadow-sm">
@@ -118,13 +118,14 @@ export default async function AdminArticlesPage({ searchParams }) {
 						>
 							Publiés
 						</Link>
+						<span className="h-8 w-px bg-neutral-300 mx-6" />
 						<Link
 							href={hrefWith({ tier: "FREE", page: 1 })}
 							className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
 								tier === "FREE" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
 							}`}
 						>
-							FREE
+							Gratuit
 						</Link>
 						<Link
 							href={hrefWith({ tier: "ACADEMY", page: 1 })}
@@ -132,7 +133,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 								tier === "ACADEMY" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
 							}`}
 						>
-							ACADEMY
+							Académie
 						</Link>
 						<Link
 							href={hrefWith({ tier: "PRIME", page: 1 })}
@@ -140,7 +141,7 @@ export default async function AdminArticlesPage({ searchParams }) {
 								tier === "PRIME" ? "bg-primary text-primary-foreground" : "bg-muted hover:bg-muted/70"
 							}`}
 						>
-							PRIME
+							Prime
 						</Link>
 					</div>
 
