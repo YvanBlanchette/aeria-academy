@@ -16,6 +16,41 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Development Database via SSH Tunnel
+
+This project can use a single remote PostgreSQL database in development through an SSH tunnel (instead of running a separate local DB instance).
+
+1. Set tunnel variables in `.env`:
+
+```bash
+SSH_DB_HOST=your-server-host
+SSH_DB_USER=your-ssh-user
+SSH_DB_PORT=22
+SSH_DB_REMOTE_HOST=127.0.0.1
+SSH_DB_REMOTE_PORT=5432
+SSH_DB_LOCAL_PORT=5433
+```
+
+2. Ensure `DATABASE_URL` points to the local tunnel endpoint, for example:
+
+```bash
+DATABASE_URL=postgresql://<db_user>:<db_password>@127.0.0.1:5433/<db_name>
+```
+
+3. Start the tunnel in one terminal:
+
+```bash
+npm run db:tunnel
+```
+
+4. Start the app in another terminal:
+
+```bash
+npm run dev
+```
+
+Keep the tunnel terminal open while developing.
+
 You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

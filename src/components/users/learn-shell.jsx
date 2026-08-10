@@ -49,6 +49,7 @@ export function LearnShell({ course, completedSet, defaultOpen, children, sessio
 				desktopOverlay
 				className="border-r shadow-lg"
 			>
+				{/* LESSONS SIDEBAR HEADER */}
 				<SidebarHeader className="relative flex h-18 items-center justify-center border-b bg-white md:h-22.5">
 					<SidebarTrigger
 						variant="ghost"
@@ -59,10 +60,12 @@ export function LearnShell({ course, completedSet, defaultOpen, children, sessio
 						<X className="h-4 w-4" />
 						<span className="sr-only">Fermer les lecons</span>
 					</SidebarTrigger>
-					<Logo
-						locale="fr"
-						scrolled
-					/>
+					<div className="origin-center scale-80 md:scale-100">
+						<Logo
+							locale="fr"
+							scrolled
+						/>
+					</div>
 				</SidebarHeader>
 				<SidebarContent className="bg-white">
 					<LessonSidebar

@@ -5,6 +5,8 @@
 	"scripts": {
 		"dev": "next dev --webpack",
 		"dev:turbo": "next dev",
+		"dev:ssh": "node scripts/dev-with-db-tunnel.mjs",
+		"db:tunnel": "node scripts/open-db-tunnel.mjs",
 		"build": "next build",
 		"start": "next start",
 		"lint": "eslint",
